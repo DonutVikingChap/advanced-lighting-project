@@ -6,7 +6,7 @@ Denna projektspecifikation beskriver ett projekt till kursen TSBK03 _Teknik för
 
 Syftet med detta projekt är att skriva en avancerad 3D-renderare med hög kvalité och tillräckligt bra prestanda för att den ska kunna fungera som bas till ett modernt datorspel med höga prestandakrav, t.ex. ett tävlingsinriktat FPS-spel eller VR. Renderaren ska använda PBR-shading, lightmapping och cascaded shadow mapping med stöd för soft shadows. Målet är att uppfylla dessa krav med så hög bildrutefrekvens som möjligt.
 
-Projektet skrivs i C och GLSL med OpenGL och SDL2 och skall resultera i en körbar applikation som renderar en enkel scen med teknikerna som nämnts ovan.
+Projektet skrivs i C++ och GLSL med OpenGL och SDL2 och skall resultera i en körbar applikation som renderar en enkel scen med teknikerna som nämnts ovan.
 
 ## Avgränsningar
 
