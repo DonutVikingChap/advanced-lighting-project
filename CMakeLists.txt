@@ -37,6 +37,7 @@ if(USE_CLANG_TIDY)
 endif()
 
 if(BUILD_SHARED_LIBS)
+	target_link_libraries(tsbk03 PRIVATE ${CMAKE_DL_LIBS})
     add_custom_command(TARGET tsbk03
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
