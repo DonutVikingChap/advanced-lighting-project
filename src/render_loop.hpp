@@ -43,19 +43,24 @@ public:
 		, m_print_fps(options.print_fps) {
 		(void)arguments; // TODO
 
-		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-		SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-		SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-		SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 1);
-		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, options.msaa_level > 0);
-		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, options.msaa_level);
-		SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
+		constexpr auto set_attribute = [](SDL_GLattr attr, int value) -> void {
+			if (SDL_GL_SetAttribute(attr, value) != 0) {
+				throw std::runtime_error{fmt::format("Failed to set OpenGL attribute: {}", SDL_GetError())};
+			}
+		};
+		set_attribute(SDL_GL_DOUBLEBUFFER, 1);
+		set_attribute(SDL_GL_ACCELERATED_VISUAL, 1);
+		set_attribute(SDL_GL_RED_SIZE, 8);
+		set_attribute(SDL_GL_GREEN_SIZE, 8);
+		set_attribute(SDL_GL_BLUE_SIZE, 8);
+		set_attribute(SDL_GL_ALPHA_SIZE, 8);
+		set_attribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		set_attribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		set_attribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		set_attribute(SDL_GL_STENCIL_SIZE, 1);
+		set_attribute(SDL_GL_MULTISAMPLEBUFFERS, options.msaa_level > 0);
+		set_attribute(SDL_GL_MULTISAMPLESAMPLES, options.msaa_level);
+		set_attribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
 
 		auto window_flags = Uint32{SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN};
 		if (options.window_resizable) {
