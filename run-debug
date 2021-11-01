@@ -1,0 +1,2 @@
+#!/bin/sh
+./compile-debug && ./build/bin/tsbk03
