@@ -3,13 +3,12 @@
 
 #include "font.hpp"
 #include "image.hpp"
-#include "mesh.hpp"
+#include "model.hpp"
+#include "quad.hpp"
 #include "texture.hpp"
 
-#include <array>         // std::array
 #include <cstddef>       // std::size_t
 #include <functional>    // std::hash
-#include <glm/glm.hpp>   // glm::...
 #include <memory>        // std::unique_ptr, std::shared_ptr, std::weak_ptr, std::make_shared
 #include <string>        // std::string
 #include <unordered_map> // std::unordered_map, std::erase_if
@@ -17,8 +16,8 @@
 
 class asset_manager final {
 public:
-	[[nodiscard]] auto load_quad_mesh() -> std::shared_ptr<textured_2d_mesh> {
-		return m_quad_mesh;
+	[[nodiscard]] auto load_quad() -> std::shared_ptr<quad> {
+		return m_quad;
 	}
 
 	[[nodiscard]] auto load_font(std::string filename, unsigned int size) -> std::shared_ptr<font> {
@@ -52,10 +51,46 @@ public:
 		return ptr;
 	}
 
+	[[nodiscard]] auto load_model(std::string filename) -> std::shared_ptr<model> {
+		const auto it = m_models.try_emplace(std::move(filename)).first;
+		if (auto ptr = it->second.lock()) {
+			return ptr;
+		}
+		auto ptr = std::make_shared<model>(it->first.c_str());
+		it->second = ptr;
+		return ptr;
+	}
+
+	[[nodiscard]] auto load_model_textures(const char* filename_prefix, const model& model) -> std::vector<std::shared_ptr<texture>> {
+		auto result = std::vector<std::shared_ptr<texture>>{};
+		result.reserve(model.texture_names().size());
+		for (const auto& texture_name : model.texture_names()) {
+			result.push_back(load_texture(filename_prefix + texture_name));
+		}
+		return result;
+	}
+
+	[[nodiscard]] auto load_textured_model(std::string filename, const char* textures_filename_prefix) -> std::shared_ptr<textured_model> {
+		const auto it = m_textured_models.try_emplace(std::move(filename)).first;
+		if (auto ptr = it->second.lock()) {
+			return ptr;
+		}
+		auto model = load_model(it->first);
+		auto textures = load_model_textures(textures_filename_prefix, *model);
+		auto ptr = std::make_shared<textured_model>(std::move(model), std::move(textures));
+		it->second = ptr;
+		return ptr;
+	}
+
 	auto cleanup() -> void {
-		std::erase_if(m_fonts, [](const auto& kv) { return kv.second.expired(); });
-		std::erase_if(m_images, [](const auto& kv) { return kv.second.expired(); });
-		std::erase_if(m_textures, [](const auto& kv) { return kv.second.expired(); });
+		static constexpr auto has_expired = [](const auto& kv) {
+			return kv.second.expired();
+		};
+		std::erase_if(m_textured_models, has_expired);
+		std::erase_if(m_models, has_expired);
+		std::erase_if(m_textures, has_expired);
+		std::erase_if(m_images, has_expired);
+		std::erase_if(m_fonts, has_expired);
 	}
 
 private:
@@ -65,7 +100,6 @@ private:
 	}
 
 	[[nodiscard]] static auto internal_texture_format(std::size_t pixel_size) noexcept -> GLenum {
-		// TODO: SRGB
 		switch (pixel_size) {
 			case 1: return GL_R8;
 			case 2: return GL_RG8;
@@ -81,7 +115,6 @@ private:
 		.repeat = true,
 		.use_linear_filtering = true,
 		.use_mip_map = true,
-		// TODO: SRGB
 	};
 
 	struct font_key final {
@@ -99,21 +132,16 @@ private:
 	using font_cache = std::unordered_map<font_key, std::weak_ptr<font>, font_key::hash>;
 	using image_cache = std::unordered_map<std::string, std::weak_ptr<image>>;
 	using texture_cache = std::unordered_map<std::string, std::weak_ptr<texture>>;
+	using model_cache = std::unordered_map<std::string, std::weak_ptr<model>>;
+	using textured_model_cache = std::unordered_map<std::string, std::weak_ptr<textured_model>>;
 
-	std::shared_ptr<textured_2d_mesh> m_quad_mesh = std::make_shared<textured_2d_mesh>(GL_STATIC_DRAW,
-		std::array<textured_2d_vertex, 6>{
-			textured_2d_vertex{glm::vec2{0.0f, 1.0f}, glm::vec2{0.0f, 0.0f}},
-			textured_2d_vertex{glm::vec2{0.0f, 0.0f}, glm::vec2{0.0f, 1.0f}},
-			textured_2d_vertex{glm::vec2{1.0f, 0.0f}, glm::vec2{1.0f, 1.0f}},
-			textured_2d_vertex{glm::vec2{0.0f, 1.0f}, glm::vec2{0.0f, 0.0f}},
-			textured_2d_vertex{glm::vec2{1.0f, 0.0f}, glm::vec2{1.0f, 1.0f}},
-			textured_2d_vertex{glm::vec2{1.0f, 1.0f}, glm::vec2{1.0f, 0.0f}},
-		},
-		&textured_2d_vertex::position, &textured_2d_vertex::texture_coordinates);
+	std::shared_ptr<quad> m_quad = std::make_shared<quad>();
 	font_library m_font_library{};
 	font_cache m_fonts{};
 	image_cache m_images{};
 	texture_cache m_textures{};
+	model_cache m_models{};
+	textured_model_cache m_textured_models{};
 };
 
 #endif

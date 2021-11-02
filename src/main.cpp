@@ -1,6 +1,7 @@
 #include "asset_manager.hpp"
 #include "font.hpp"
 #include "framebuffer.hpp"
+#include "glsl.hpp"
 #include "render_loop.hpp"
 #include "renderer.hpp"
 #include "scene.hpp"
@@ -10,7 +11,7 @@
 #include <cstdio>       // stderr
 #include <cstdlib>      // EXIT_SUCCESS, EXIT_FAILURE
 #include <fmt/format.h> // fmt::...
-#include <glm/glm.hpp>  // glm::...
+#include <glm/glm.hpp>  // glm::identity
 #include <imgui.h>      // ImGui
 #include <memory>       // std::shared_ptr
 #include <span>         // std::span
@@ -31,57 +32,55 @@ public:
 		.msaa_level = 0,
 	};
 
+	static constexpr auto vertical_field_of_view = 1.57079633f;
+	static constexpr auto near_z = 0.01f;
+	static constexpr auto far_z = 1000.0f;
+
 	explicit application(std::span<char*> arguments)
 		: render_loop(arguments, options) {}
 
 private:
 	auto resize(int width, int height) -> void override {
-		m_renderer.resize(width, height);
+		m_renderer.resize(width, height, vertical_field_of_view, near_z, far_z);
 		m_viewport = viewport{0, 0, width, height};
 	}
 
 	auto handle_event(const SDL_Event& e) -> void override {
-		// TODO
-		(void)e;
+		m_scene.handle_event(e); // TODO: Don't do m_scene.handle_event if the GUI is active.
 		m_renderer.handle_event(e);
 	}
 
 	auto tick(unsigned int tick_count, float delta_time) -> void override {
-		// TODO
-		(void)tick_count;
-		(void)delta_time;
+		m_scene.tick(tick_count, delta_time);
 	}
 
 	auto update(float elapsed_time, float delta_time) -> void override {
-		// TODO
-		(void)elapsed_time;
-		(void)delta_time;
-		(void)m_scene;
+		m_scene.update(elapsed_time, delta_time);
 		m_renderer.update();
 	}
 
 	auto display() -> void override {
 		// TODO
 		ImGui::ShowDemoWindow();
-		(void)m_scene;
-		m_renderer.draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("FPS: {}", latest_measured_fps()));
-		m_renderer.draw_text(m_main_font, {200.0f, 600.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, "Some text. Wow!\n(Cool, even parentheses work)");
-		m_renderer.draw_text(m_main_font, {100.0f, 300.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"Here's some crazy UTF-8 text that will probably break everything:");
-		m_renderer.draw_text(m_japanese_font, {100.0f, 332.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"雨にもまけず");
-		m_renderer.draw_text(m_main_font, {100.0f, 364.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"And here's some more:");
-		m_renderer.draw_text(m_arabic_font, {100.0f, 396.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"التفاصيل");
-		m_renderer.draw_text(m_emoji_font, {100.0f, 428.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"😀😃😄😁😆");
-		m_renderer.draw_text(m_emoji_font, {100.0f, 460.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"👩🏾‍💻");
-		m_renderer.render(framebuffer::get_default(), m_viewport, glm::identity<glm::mat4>());
+		m_scene.draw(m_renderer);
+		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("FPS: {}", latest_measured_fps()));
+		m_renderer.text().draw_text(m_main_font, {200.0f, 600.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, "Some text. Wow!\n(Cool, even parentheses work)");
+		m_renderer.text().draw_text(m_main_font, {100.0f, 300.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"Here's some crazy UTF-8 text that will probably break everything:");
+		m_renderer.text().draw_text(m_japanese_font, {100.0f, 332.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"雨にもまけず");
+		m_renderer.text().draw_text(m_main_font, {100.0f, 364.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"And here's some more:");
+		m_renderer.text().draw_text(m_arabic_font, {100.0f, 396.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"التفاصيل");
+		m_renderer.text().draw_text(m_emoji_font, {100.0f, 428.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"😀😃😄😁😆");
+		m_renderer.text().draw_text(m_emoji_font, {100.0f, 460.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"👩🏾‍💻");
+		m_renderer.render(framebuffer::get_default(), m_viewport, m_scene.view_matrix(), m_scene.view_position());
 	}
 
 	asset_manager m_asset_manager{};
-	renderer m_renderer{m_asset_manager.load_quad_mesh(), get_window(), get_gl_context()};
+	renderer m_renderer{m_asset_manager.load_quad(), get_window(), get_gl_context()};
 	std::shared_ptr<font> m_main_font = m_asset_manager.load_font("assets/fonts/liberation/LiberationSans-Regular.ttf", 32u);
 	std::shared_ptr<font> m_arabic_font = m_asset_manager.load_font("assets/fonts/noto/NotoSansArabic-Regular.ttf", 32u);
 	std::shared_ptr<font> m_japanese_font = m_asset_manager.load_font("assets/fonts/noto/NotoSansJP-Regular.otf", 32u);
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
-	scene m_scene{};
+	scene m_scene{m_asset_manager};
 	viewport m_viewport{};
 };
 

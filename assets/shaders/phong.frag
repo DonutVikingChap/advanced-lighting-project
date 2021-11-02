@@ -3,22 +3,13 @@
 #define DIRECTIONAL_LIGHT_COUNT 1
 #define POINT_LIGHT_COUNT 2
 #define SPOT_LIGHT_COUNT 1
-
-struct Material {
-    sampler2D diffuse;
-    sampler2D specular;
-    sampler2D normal;
-    float shininess;
-};
+#define CSM_CASCADE_COUNT 8
 
 struct DirectionalLight {
 	vec3 direction;
 	vec3 ambient;
 	vec3 diffuse;
 	vec3 specular;
-    mat4 shadow_matrices[CSM_CASCADE_COUNT];
-    float shadow_uv_sizes[CSM_CASCADE_COUNT];
-    float shadow_near_planes[CSM_CASCADE_COUNT];
     bool shadow_mapped;
     bool active;
 };
@@ -50,7 +41,6 @@ struct SpotLight {
     float outer_cutoff;
     float shadow_near_plane;
     float shadow_far_plane;
-    mat4 shadow_matrix;
     bool shadow_mapped;
     bool active;
 };
@@ -58,6 +48,8 @@ struct SpotLight {
 in vec3 io_fragment_position;
 in float io_fragment_depth;
 in vec3 io_normal;
+in vec3 io_tangent;
+in vec3 io_bitangent;
 in vec2 io_texture_coordinates;
 in vec4 io_fragment_positions_in_directional_light_space[DIRECTIONAL_LIGHT_COUNT * CSM_CASCADE_COUNT];
 in vec4 io_fragment_positions_in_spot_light_space[SPOT_LIGHT_COUNT];
@@ -65,80 +57,90 @@ in vec4 io_fragment_positions_in_spot_light_space[SPOT_LIGHT_COUNT];
 out vec4 out_fragment_color;
 
 uniform vec3 view_position;
+
+uniform sampler2D material_diffuse;
+uniform sampler2D material_specular;
+uniform sampler2D material_normal;
+uniform float material_shininess;
+
 uniform DirectionalLight directional_lights[DIRECTIONAL_LIGHT_COUNT];
 uniform PointLight point_lights[POINT_LIGHT_COUNT];
 uniform SpotLight spot_lights[SPOT_LIGHT_COUNT];
-uniform Material material;
 
 uniform sampler2DArrayShadow directional_shadow_maps[DIRECTIONAL_LIGHT_COUNT];
 uniform sampler2DArray directional_depth_maps[DIRECTIONAL_LIGHT_COUNT];
+uniform float directional_shadow_uv_sizes[DIRECTIONAL_LIGHT_COUNT * CSM_CASCADE_COUNT];
+uniform float directional_shadow_near_planes[DIRECTIONAL_LIGHT_COUNT * CSM_CASCADE_COUNT];
+
 uniform samplerCubeShadow point_shadow_maps[POINT_LIGHT_COUNT];
 uniform sampler2DShadow spot_shadow_maps[SPOT_LIGHT_COUNT];
 
 uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
 
 void main() {
-    float material_diffuse = texture(material.diffuse, io_texture_coordinates)
-    float material_specular = texture(material.diffuse, io_texture_coordinates)
+    vec3 mat_diffuse = texture(material_diffuse, io_texture_coordinates).rgb;
+    float mat_specular = texture(material_diffuse, io_texture_coordinates).r;
     
     vec3 view_direction = normalize(view_position - io_fragment_position);
 
-    vec3 result = vec3(0,0,0)
+    vec3 result = vec3(0.0, 0.0, 0.0);
 
-    for(int i = 0; i < DIRECTIONAL_LIGHT_COUNT; i++) {
-        const vec3 ambient = directional_lights[i].ambient * directional_lights[i].color;
-        const float n_dot_l = dot(io_normal, directional_lights[i].direction);
-        const float reflect_dir = reflect(-directional_lights[i].direction, io_normal);
-        
-        const vec3 diffuse = n_dot_l * material_diffuse * directional_lights[i].color;
-        
-        const specular_intensity = pow(max(reflect_dir * view_direction, 0), material_specular);
-        const vec3 specular = specular_intensity * vec3(1, 1, 1);
+    for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
+        vec3 ambient = directional_lights[i].ambient * directional_lights[i].ambient;
+        float n_dot_l = dot(io_normal, directional_lights[i].direction);
+        vec3 reflect_dir = reflect(-directional_lights[i].direction, io_normal);
+    
+        vec3 diffuse = n_dot_l * mat_diffuse * directional_lights[i].diffuse;
+    
+        float specular_intensity = pow(max(dot(reflect_dir, view_direction), 0), mat_specular);
+        vec3 specular = specular_intensity * directional_lights[i].specular;
 
-        result += (ambient + diffuse + specular) * directional_lights[i].color;
-    }
-    for(int i = 0; i < POINT_LIGHT_COUNT; i++) {
-        const vec3 light_to_frag = io_fragment_position - point_lights[i].position;
-        const float light_distance_squared = dot(light_difference, light_to_frag);
-	    const float light_distance = sqrt(light_distance_squared);
-        const vec3 light_direction = light_to_frag / light_distance;
-
-        const float attenuation = 1.0 / (point_lights[i].constant + point_lights[i].linear * light_distance + point_lights[i].quadratic * light_distance_squared);
-
-        const vec3 ambient = point_lights[i].ambient * point_lights[i].color;
-        const float n_dot_l = dot(io_normal, light_direction);
-        const float reflect_dir = reflect(-light_direction, io_normal);
-
-        const vec3 diffuse = material_diffuse * directional_lights[i].color;
-
-        const specular_intensity = pow(max(reflect_dir * view_direction, 0), material_specular);
-        const vec3 specular = specular_intensity * vec3(1, 1, 1);
-
-        result += (ambient + diffuse + specular) * attenuation * directional_lights[i].color;
-    }
-    for(int i = 0; i < SPOT_LIGHT_COUNT; i++) {
-        const vec3 frag_to_light = spot_lights[i].position - io_fragment_position;
-        const float light_distance_squared = dot(light_difference, frag_to_light);
-	    const float light_distance = sqrt(light_distance_squared);
-        const vec3 light_direction = frag_to_light / light_distance;
-
-        const float theta = dot(spot_lights[i].direction, -light_direction);
-        const float epsilon = spot_lights[i].outer_cutoff - spot_lights[i].inner_cutoff;
-	    const float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[i].outer_cutoff) / epsilon);
-        
-        const vec3 ambient = spot_lights[i].ambient * spot_lights[i].color;
-        const float n_dot_l = dot(io_normal, spot_lights[i].direction);
-        const float reflect_dir = reflect(-light_direction, io_normal);
-
-        const float attenuation = intensity / (spot_lights[i].constant + spot_lights[i].linear * light_distance + spot_lights[i].quadratic * light_distance_squared);
-
-        const vec3 diffuse = n_dot_l * material_diffuse * directional_lights[i].color;
-
-        const specular_intensity = pow(max(reflect_dir * view_direction, 0), material_specular);
-        const vec3 specular = specular_intensity * vec3(1, 1, 1);
-
-        result += (ambient + diffuse + specular) * attenuation * directional_lights[i].color;
+        result += ambient + diffuse + specular;
     }
 
-    out_fragment_color = clamp(result, 0, 1);
+    for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
+        vec3 light_to_frag = io_fragment_position - point_lights[i].position;
+        float light_distance_squared = dot(light_to_frag, light_to_frag);
+	    float light_distance = sqrt(light_distance_squared);
+        vec3 light_direction = light_to_frag / light_distance;
+
+        float attenuation = 1.0 / (point_lights[i].constant + point_lights[i].linear * light_distance + point_lights[i].quadratic * light_distance_squared);
+
+        vec3 ambient = point_lights[i].ambient * point_lights[i].ambient;
+        float n_dot_l = dot(io_normal, light_direction);
+        vec3 reflect_dir = reflect(-light_direction, io_normal);
+
+        vec3 diffuse = mat_diffuse * point_lights[i].diffuse;
+
+        float specular_intensity = pow(max(dot(reflect_dir, view_direction), 0), mat_specular);
+        vec3 specular = specular_intensity * point_lights[i].specular;
+
+        result += (ambient + diffuse + specular) * attenuation;
+    }
+
+    for (int i = 0; i < SPOT_LIGHT_COUNT; ++i) {
+        vec3 frag_to_light = spot_lights[i].position - io_fragment_position;
+        float light_distance_squared = dot(frag_to_light, frag_to_light);
+	    float light_distance = sqrt(light_distance_squared);
+        vec3 light_direction = frag_to_light / light_distance;
+
+        float theta = dot(spot_lights[i].direction, -light_direction);
+        float epsilon = spot_lights[i].outer_cutoff - spot_lights[i].inner_cutoff;
+	    float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[i].outer_cutoff) / epsilon);
+    
+        vec3 ambient = spot_lights[i].ambient * spot_lights[i].ambient;
+        float n_dot_l = dot(io_normal, spot_lights[i].direction);
+        vec3 reflect_dir = reflect(-light_direction, io_normal);
+
+        float attenuation = intensity / (spot_lights[i].constant + spot_lights[i].linear * light_distance + spot_lights[i].quadratic * light_distance_squared);
+
+        vec3 diffuse = n_dot_l * mat_diffuse * spot_lights[i].diffuse;
+
+        float specular_intensity = pow(max(dot(reflect_dir, view_direction), 0), mat_specular);
+        vec3 specular = specular_intensity * spot_lights[i].specular;
+
+        result += (ambient + diffuse + specular) * attenuation;
+    }
+
+    out_fragment_color = vec4(result, 1.0);
 }

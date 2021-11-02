@@ -4,12 +4,14 @@
 #include "handle.hpp"
 #include "opengl.hpp"
 
+#include <array>        // std::array
+#include <cstddef>      // std::size_t
 #include <fmt/format.h> // fmt::...
 #include <fstream>      // std::ifstream
 #include <sstream>      // std::ostringstream
 #include <stdexcept>    // std:runtime_error
 #include <string>       // std::string
-#include <utility>      // std::move
+#include <utility>      // std::move, std::index_sequence, std::make_index_sequence
 
 struct shader_error : std::runtime_error {
 	explicit shader_error(const auto& message)
@@ -135,6 +137,51 @@ private:
 	shader m_geometry_shader;
 	shader m_tesselation_control_shader;
 	shader m_tesselation_evaluation_shader;
+};
+
+class shader_uniform final {
+public:
+	shader_uniform(GLuint program, const char* name) noexcept
+		: m_location(glGetUniformLocation(program, name)) {}
+
+	[[nodiscard]] auto location() const noexcept -> GLint {
+		return m_location;
+	}
+
+private:
+	GLint m_location;
+};
+
+template <typename T, std::size_t N>
+class shader_array final {
+public:
+	shader_array(GLuint program, const char* name) noexcept
+		: m_arr([&]<std::size_t... Indices>(std::index_sequence<Indices...>) {
+			return std::array<T, N>{(T{program, fmt::format("{}[{}]", name, Indices).c_str()})...};
+		}(std::make_index_sequence<N>{})) {}
+
+	[[nodiscard]] auto size() const noexcept -> std::size_t {
+		return m_arr.size();
+	}
+
+	[[nodiscard]] auto operator[](std::size_t i) -> T& {
+		return m_arr[i];
+	}
+
+	[[nodiscard]] auto operator[](std::size_t i) const -> const T& {
+		return m_arr[i];
+	}
+
+	[[nodiscard]] auto begin() const noexcept -> decltype(auto) {
+		return m_arr.begin();
+	}
+
+	[[nodiscard]] auto end() const noexcept -> decltype(auto) {
+		return m_arr.begin();
+	}
+
+private:
+	std::array<T, N> m_arr;
 };
 
 #endif

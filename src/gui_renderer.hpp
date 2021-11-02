@@ -2,12 +2,15 @@
 #define GUI_HPP
 
 #include "opengl.hpp"
+#include "passkey.hpp"
 
 #include <SDL.h>                // SDL_...
 #include <imgui.h>              // ImGui
 #include <imgui_impl_opengl3.h> // ImGui_ImplOpenGL3_...
 #include <imgui_impl_sdl.h>     // ImGui_ImplSDL2_...
 #include <memory>               // std::unique_ptr
+
+class renderer;
 
 class gui_renderer final {
 public:
@@ -21,19 +24,19 @@ public:
 		ImGui::StyleColorsDark();
 	}
 
-	auto handle_event(const SDL_Event& e) -> void {
+	auto handle_event(passkey<renderer>, const SDL_Event& e) -> void {
 		ImGui::SetCurrentContext(m_context.get());
 		ImGui_ImplSDL2_ProcessEvent(&e);
 	}
 
-	auto update() -> void {
+	auto update(passkey<renderer>) -> void {
 		ImGui::SetCurrentContext(m_context.get());
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(m_window);
 		ImGui::NewFrame();
 	}
 
-	auto render() -> void {
+	auto render(passkey<renderer>) -> void {
 		ImGui::SetCurrentContext(m_context.get());
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

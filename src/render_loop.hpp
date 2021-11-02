@@ -60,7 +60,6 @@ public:
 		set_attribute(SDL_GL_STENCIL_SIZE, 1);
 		set_attribute(SDL_GL_MULTISAMPLEBUFFERS, options.msaa_level > 0);
 		set_attribute(SDL_GL_MULTISAMPLESAMPLES, options.msaa_level);
-		set_attribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1);
 
 		auto window_flags = Uint32{SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN};
 		if (options.window_resizable) {
@@ -94,7 +93,7 @@ public:
 	render_loop(const render_loop&) = delete;
 	render_loop(render_loop&&) = delete;
 	auto operator=(const render_loop&) -> render_loop& = delete;
-	auto operator=(render_loop&&) -> render_loop& = delete;
+	auto operator=(render_loop &&) -> render_loop& = delete;
 
 	auto run() -> void {
 		m_start_time = SDL_GetPerformanceCounter();
@@ -137,9 +136,9 @@ private:
 			SDL_Quit();
 		}
 		sdl(const sdl&) = delete;
-		sdl(sdl&&) = delete;
-		auto operator=(const sdl&) -> sdl& = delete;
-		auto operator=(sdl&&) -> sdl& = delete;
+		sdl(sdl &&) = delete;
+		auto operator=(const sdl&)->sdl& = delete;
+		auto operator=(sdl &&)->sdl& = delete;
 	};
 
 	struct sdl_initializer final {

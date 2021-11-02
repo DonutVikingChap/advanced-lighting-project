@@ -1,8 +1,8 @@
 #ifndef FONT_HPP
 #define FONT_HPP
 
-#include "context.hpp"
 #include "framebuffer.hpp"
+#include "glsl.hpp"
 #include "mesh.hpp"
 #include "opengl.hpp"
 #include "shader.hpp"
@@ -12,7 +12,6 @@
 #include <algorithm>     // std::max
 #include <cstddef>       // std::byte, std::size_t
 #include <fmt/format.h>  // fmt::...
-#include <glm/glm.hpp>   // glm::...
 #include <memory>        // std::unique_ptr
 #include <stdexcept>     // std::runtime_error
 #include <string_view>   // std::u8string_view
@@ -64,11 +63,11 @@ private:
 };
 
 struct font_glyph final {
-	glm::vec2 texture_offset{};
-	glm::vec2 texture_scale{};
-	glm::vec2 position{};
-	glm::vec2 size{};
-	glm::vec2 bearing{};
+	vec2 texture_offset{};
+	vec2 texture_scale{};
+	vec2 position{};
+	vec2 size{};
+	vec2 bearing{};
 	float advance = 0.0f;
 };
 
@@ -137,8 +136,8 @@ public:
 		return (FT_IS_SCALABLE(m_face.get())) ? kerning_x * 0.015625f : kerning_x;
 	}
 
-	[[nodiscard]] auto text_size(glm::vec2 scale, std::u8string_view str) const noexcept -> glm::vec2 {
-		auto size = glm::vec2{};
+	[[nodiscard]] auto text_size(vec2 scale, std::u8string_view str) const noexcept -> vec2 {
+		auto size = vec2{};
 		auto x = 0.0f;
 		auto top = true;
 		const auto code_points = utf8_view{str};
@@ -174,9 +173,9 @@ private:
 		}
 
 		state_preserver(const state_preserver&) = delete;
-		state_preserver(state_preserver&&) = delete;
-		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		state_preserver(state_preserver &&) = delete;
+		auto operator=(const state_preserver&)->state_preserver& = delete;
+		auto operator=(state_preserver &&)->state_preserver& = delete;
 
 	private:
 		GLint m_framebuffer_binding = 0;
@@ -222,7 +221,7 @@ private:
 		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_atlas.get(), 0);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, new_atlas.get(), 0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT1);
-		context::check_framebuffer_status();
+		opengl_context::check_framebuffer_status();
 		const auto width = static_cast<GLint>(m_atlas.width());
 		const auto height = static_cast<GLint>(m_atlas.height());
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -232,7 +231,7 @@ private:
 	}
 
 	auto update_texture_coordinates() -> void {
-		const auto texture_size = glm::vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
+		const auto texture_size = vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
 		for (auto& glyph : m_ascii_glyphs) {
 			glyph.texture_offset = glyph.position / texture_size;
 			glyph.texture_scale = glyph.size / texture_size;
@@ -273,15 +272,15 @@ private:
 			m_atlas.paste(reinterpret_cast<const std::byte*>(pixels), width, height, glyph_format, x, y);
 			row->width += padded_width;
 		}
-		const auto texture_size = glm::vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
-		const auto position = glm::vec2{static_cast<float>(x), static_cast<float>(y)};
-		const auto size = glm::vec2{static_cast<float>(width), static_cast<float>(height)};
+		const auto texture_size = vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
+		const auto position = vec2{static_cast<float>(x), static_cast<float>(y)};
+		const auto size = vec2{static_cast<float>(width), static_cast<float>(height)};
 		return font_glyph{
 			.texture_offset = position / texture_size,
 			.texture_scale = size / texture_size,
 			.position = position,
 			.size = size,
-			.bearing = glm::vec2{static_cast<float>(m_face->glyph->bitmap_left), static_cast<float>(m_face->glyph->bitmap_top)},
+			.bearing = vec2{static_cast<float>(m_face->glyph->bitmap_left), static_cast<float>(m_face->glyph->bitmap_top)},
 			.advance = static_cast<float>(m_face->glyph->advance.x) * 0.015625f,
 		};
 	}

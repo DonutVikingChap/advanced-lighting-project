@@ -1,12 +1,12 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
+#include "glsl.hpp"
 #include "handle.hpp"
 #include "opengl.hpp"
 
 #include <cstddef>     // std::byte, std::size_t
 #include <cstdint>     // std::uintptr_t
-#include <glm/glm.hpp> // glm::...
 #include <memory>      // std::addressof
 #include <span>        // std::span
 #include <stdexcept>   // std::invalid_argument
@@ -69,17 +69,17 @@ public:
 
 	template <typename... Ts>
 	mesh(GLenum usage, std::span<const Vertex> vertices, Ts(Vertex::*... vertex_attributes)) requires(!is_indexed) {
+		const auto preserver = state_preserver{};
 		glBindVertexArray(m_vao.get());
 		buffer_vertex_data(usage, vertices, vertex_attributes...);
-		glBindVertexArray(0);
 	}
 
 	template <typename... Ts>
 	mesh(GLenum usage, std::span<const Vertex> vertices, std::span<const Index> indices, Ts(Vertex::*... vertex_attributes)) requires(is_indexed) {
+		const auto preserver = state_preserver{};
 		glBindVertexArray(m_vao.get());
 		buffer_vertex_data(usage, vertices, vertex_attributes...);
 		buffer_index_data(usage, indices);
-		glBindVertexArray(0);
 	}
 
 	[[nodiscard]] auto get() const noexcept -> GLuint {
@@ -87,6 +87,25 @@ public:
 	}
 
 private:
+	class [[nodiscard]] state_preserver final {
+	public:
+		state_preserver() noexcept {
+			glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_vertex_array_binding);
+		}
+
+		~state_preserver() {
+			glBindVertexArray(m_vertex_array_binding);
+		}
+
+		state_preserver(const state_preserver&) = delete;
+		state_preserver(state_preserver &&) = delete;
+		auto operator=(const state_preserver&)->state_preserver& = delete;
+		auto operator=(state_preserver &&)->state_preserver& = delete;
+
+	private:
+		GLint m_vertex_array_binding = 0;
+	};
+
 	struct empty {};
 
 	template <typename... Ts>
@@ -112,13 +131,13 @@ private:
 		const auto* const base_ptr = reinterpret_cast<const std::byte*>(std::addressof(dummy_vertex));
 		const auto* const offset = reinterpret_cast<const void*>(static_cast<std::uintptr_t>(attribute_ptr - base_ptr)); // NOLINT(performance-no-int-to-ptr)
 		glEnableVertexAttribArray(index);
-		if constexpr (std::is_same_v<T, GLfloat>) {
+		if constexpr (std::is_same_v<T, float>) {
 			glVertexAttribPointer(index, 1, GL_FLOAT, GL_FALSE, stride, offset);
-		} else if constexpr (std::is_same_v<T, glm::vec2>) {
+		} else if constexpr (std::is_same_v<T, vec2>) {
 			glVertexAttribPointer(index, 2, GL_FLOAT, GL_FALSE, stride, offset);
-		} else if constexpr (std::is_same_v<T, glm::vec3>) {
+		} else if constexpr (std::is_same_v<T, vec3>) {
 			glVertexAttribPointer(index, 3, GL_FLOAT, GL_FALSE, stride, offset);
-		} else if constexpr (std::is_same_v<T, glm::vec4>) {
+		} else if constexpr (std::is_same_v<T, vec4>) {
 			glVertexAttribPointer(index, 4, GL_FLOAT, GL_FALSE, stride, offset);
 		} else {
 			throw std::invalid_argument{"Invalid vertex attribute type!"};
@@ -129,20 +148,5 @@ private:
 	vertex_buffer m_vbo{};
 	[[no_unique_address]] std::conditional_t<is_indexed, vertex_buffer, empty> m_ebo{}; // NOLINT(clang-diagnostic-unknown-attributes)
 };
-
-struct textured_2d_vertex final {
-	glm::vec2 position{};
-	glm::vec2 texture_coordinates{};
-};
-
-using textured_2d_mesh = mesh<textured_2d_vertex>;
-
-struct textured_3d_vertex final {
-	glm::vec3 position{};
-	glm::vec2 texture_coordinates{};
-};
-
-using textured_3d_mesh = mesh<textured_3d_vertex>;
-using indexed_textured_3d_mesh = mesh<textured_3d_vertex, GLuint>;
 
 #endif
