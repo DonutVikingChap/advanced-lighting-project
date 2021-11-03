@@ -11,7 +11,7 @@ struct DirectionalLight {
 	vec3 diffuse;
 	vec3 specular;
     bool shadow_mapped;
-    bool active;
+    bool light_active;
 };
 
 struct PointLight {
@@ -25,7 +25,7 @@ struct PointLight {
     float shadow_near_plane;
     float shadow_far_plane;
     bool shadow_mapped;
-    bool active;
+    bool light_active;
 };
 
 struct SpotLight {

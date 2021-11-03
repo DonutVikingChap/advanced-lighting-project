@@ -1,6 +1,6 @@
 #version 330 core
 
-#define PI 3.14159
+#define PI 3.1415
 #define BASE_REFLECTIVITY 0.04
 
 #define DIRECTIONAL_LIGHT_COUNT 1
@@ -13,7 +13,7 @@ struct DirectionalLight {
     vec3 color;
 	vec3 ambient;
     bool shadow_mapped;
-    //bool active;
+    bool light_active;
 };
 
 struct PointLight {
@@ -26,7 +26,7 @@ struct PointLight {
     float shadow_near_plane;
     float shadow_far_plane;
     bool shadow_mapped;
-    //bool active;
+    bool light_active;
 };
 
 struct SpotLight {
@@ -42,7 +42,7 @@ struct SpotLight {
     float shadow_near_plane;
     float shadow_far_plane;
     bool shadow_mapped;
-    //bool active;
+    bool light_active;
 };
 
 in vec3 io_fragment_position;
@@ -81,7 +81,7 @@ uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
 float normal_tr_ggx(vec3 n, vec3 h, float a) {
     float a_sq = a*a;
     float n_dot_h = dot(n, h);
-    float denominator_root = (pi*n_dot_h*n_dot_h*(a_sq-1.0) + 1.0);
+    float denominator_root = (PI*n_dot_h*n_dot_h*(a_sq-1.0) + 1.0);
     return a_sq/(denominator_root*denominator_root);
 }
 
@@ -89,13 +89,13 @@ float geometry_schlick_ggx(float dot, float k) {
     return dot/(dot*(1.0-k) + k);
 }
 
-float geometry_smith(vec3 n, vec3, v, vec3 l, float k) {
+float geometry_smith(vec3 n, vec3 v, vec3 l, float k) {
     float n_dot_v = dot(n, v);
-    float n_dot_l = dot(n, l)
-    return geometry_schlick_ggx(n_dot_v, k) * geometry_schlick_ggx(n_dot_l, k)
+    float n_dot_l = dot(n, l);
+    return geometry_schlick_ggx(n_dot_v, k) * geometry_schlick_ggx(n_dot_l, k);
 }
 
-float fresnel_schlick(vec3 h, vec3 v, float f_0) {
+vec3 fresnel_schlick(vec3 h, vec3 v, vec3 f_0) {
     return f_0 + (1.0 - f_0)*pow(1 - dot(h,v), 5);
 }
 
@@ -108,18 +108,18 @@ vec3 pbr(
     float k_d,
     float metallic,
     float roughness,
-    float reflectivity
+    vec3 reflectivity
 ) {
-    vec3 half = -normalize(light_direction + view_direction);
+    vec3 half_vector = -normalize(light_direction + view_direction);
     float n_dot_l = dot(normal, light_direction);
     
     float k = pow(roughness + 1 , 2);
     float d = normal_tr_ggx(normal, half_vector, roughness);
-    float f = fresnel_schlick(half_vector, -view_direction, reflectivity);
+    vec3 f = fresnel_schlick(half_vector, -view_direction, reflectivity);
     float g = geometry_smith(io_normal, -view_direction, light_direction, k);
 
-    diffuse = material_albedo/PI;
-    specular = d*f*g/(4*(-view_direction));
+    vec3 diffuse = albedo * (1/PI);
+    vec3 specular = d*f*g/(4*(-view_direction));
     return (k_d * diffuse + specular) * light_color * n_dot_l;
 }
 
@@ -128,19 +128,19 @@ void main() {
     float roughness = texture(material_roughness, io_texture_coordinates).r;
     float metallic = texture(material_metallic, io_texture_coordinates).r;
     float specular = texture(material_specular, io_texture_coordinates).r;
-    float reflectivity = mix(vec3(BASE_REFLECTIVITY), albedo, metallic);
+    vec3 reflectivity = mix(vec3(BASE_REFLECTIVITY), albedo, metallic);
 
     vec3 normal = normalize(io_normal);
     vec3 tangent = normalize(io_tangent);
     vec3 bitangent = normalize(io_bitangent);
     mat3 TBN = mat3(tangent, bitangent, normal);
 
-    vec3 normal = texture(material_normal, io_texture_coordinates).rgb;
+    normal = texture(material_normal, io_texture_coordinates).rgb;
     normal = normal * 2.0 - 1.0;
-    normal = normalize(TBN * normal)
+    normal = normalize(TBN * normal);
     
     normal = normal * 2.0 - 1.0;
-    normalize(TBN * normal)
+    normalize(TBN * normal);
     float k_d = (1.0-specular);
     vec3 view_direction = normalize(view_position - io_fragment_position);
 
@@ -158,7 +158,7 @@ void main() {
                 k_d,
                 metallic,
                 roughness,
-                reflectivity)
+                reflectivity);
     }
     for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
         vec3 light_to_frag = io_fragment_position - point_lights[i].position;
@@ -172,13 +172,13 @@ void main() {
         result += attenuation * pbr(
                 normal,
                 view_direction,
-                point_lights[i].direction,
+                light_direction,
                 point_lights[i].color,
                 albedo,
                 k_d,
                 metallic,
                 roughness,
-                reflectivity)
+                reflectivity);
     }
     for (int i = 0; i < SPOT_LIGHT_COUNT; ++i) {
         vec3 frag_to_light = spot_lights[i].position - io_fragment_position;
@@ -199,13 +199,13 @@ void main() {
             attenuation * pbr(
                 io_normal,
                 view_direction,
-                spot_lights[i].direction,
+                light_direction,
                 spot_lights[i].color,
                 albedo,
                 k_d,
                 metallic,
                 roughness,
-                reflectivity)
+                reflectivity);
     }
     out_fragment_color = vec4(result, 1.0);
 }
