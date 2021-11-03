@@ -79,7 +79,7 @@ public:
 					const auto& model_matrix = instance.transform;
 					const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
 					glUniformMatrix4fv(m_model_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
-					glUniformMatrix3fv(m_model_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
+					glUniformMatrix3fv(m_model_shader.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
 					glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh.index_count()), GL_UNSIGNED_INT, nullptr);
 				}
 			}
@@ -89,7 +89,7 @@ public:
 
 private:
 	struct model_shader final {
-		shader_program program{"assets/shaders/phong.vert", "assets/shaders/phong.frag"};
+		shader_program program{"assets/shaders/phong.vert", "assets/shaders/flat.frag"};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
 		shader_uniform view_matrix{program.get(), "view_matrix"};
 		shader_uniform model_matrix{program.get(), "model_matrix"};

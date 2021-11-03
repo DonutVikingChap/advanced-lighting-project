@@ -8,7 +8,7 @@
 #include "renderer.hpp"
 
 #include <SDL.h>       // SDL_...
-#include <glm/glm.hpp> // glm::identity, glm::lookAt
+#include <glm/glm.hpp> // glm::identity, glm::lookAt, glm::translate, glm::scale
 #include <memory>      // std::shared_ptr
 #include <vector>      // std::vector
 
@@ -68,7 +68,9 @@ private:
 
 	asset_manager& m_asset_manager;
 	std::vector<object> m_objects{
-		{m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"), glm::identity<mat4>()},
+		{m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"), glm::identity<mat4>()},
+		{m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),
+			glm::translate(glm::scale(glm::identity<mat4>(), vec3{0.5f}), vec3{8.0f, -1.0f, 0.0f})},
 	};
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, -0.674740942224f};
 };

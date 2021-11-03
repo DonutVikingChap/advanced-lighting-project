@@ -45,7 +45,8 @@ struct model_material final {
 class model_mesh final {
 public:
 	model_mesh(std::span<const model_vertex> vertices, std::span<const model_index> indices, const model_material& material)
-		: m_mesh(GL_STATIC_DRAW, vertices, indices)
+		: m_mesh(GL_STATIC_DRAW, vertices, indices, &model_vertex::position, &model_vertex::normal, &model_vertex::tangent, &model_vertex::bitangent,
+			  &model_vertex::texture_coordinates)
 		, m_material(material)
 		, m_vertex_count(vertices.size())
 		, m_index_count(indices.size()) {}
