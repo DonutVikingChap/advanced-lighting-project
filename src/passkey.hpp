@@ -2,7 +2,7 @@
 #define PASSKEY_HPP
 
 template <typename T>
-class passkey {
+class passkey final {
 	friend T;
 	constexpr passkey() noexcept {}
 };
