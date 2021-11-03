@@ -43,8 +43,8 @@ float normal_tr_ggx(vec3 n, vec3 h, float a) {
     return a_sq/(denominator_root*denominator_root);
 }
 
-float geometry_schlick_ggx(float dot, float k) {
-    return dot/(dot*(1.0-k) + k);
+float geometry_schlick_ggx(float d, float k) {
+    return d/(d*(1.0-k) + k);
 }
 
 float geometry_smith(vec3 n, vec3 v, vec3 l, float k) {
@@ -105,6 +105,9 @@ void main() {
     vec3 result = vec3(0.0, 0.0, 0.0);
 
     for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
+        if (!directional_lights[i].is_active) {
+            continue;
+        }
         result += directional_lights[i].ambient * directional_lights[i].ambient;
         result +=
             pbr(
@@ -119,11 +122,14 @@ void main() {
                 reflectivity);
     }
     for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
+        if (!point_lights[i].is_active) {
+            continue;
+        }
+
         vec3 light_to_frag = io_fragment_position - point_lights[i].position;
         float light_distance_squared = dot(light_to_frag, light_to_frag);
 	    float light_distance = sqrt(light_distance_squared);
         vec3 light_direction = light_to_frag / light_distance;
-
         float attenuation = 1.0 / (point_lights[i].constant + point_lights[i].linear * light_distance + point_lights[i].quadratic * light_distance_squared);
         
         result += point_lights[i].ambient;
@@ -139,6 +145,9 @@ void main() {
                 reflectivity);
     }
     for (int i = 0; i < SPOT_LIGHT_COUNT; ++i) {
+        if (!spot_lights[i].is_active) {
+            continue;
+        }
         vec3 frag_to_light = spot_lights[i].position - io_fragment_position;
         float light_distance_squared = dot(frag_to_light, frag_to_light);
 	    float light_distance = sqrt(light_distance_squared);

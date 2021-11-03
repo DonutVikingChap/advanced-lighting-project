@@ -45,7 +45,7 @@ class shader final {
 public:
 	static constexpr auto default_glsl_version = std::string_view{"330 core"};
 
-	shader(GLenum type, const char* filename = nullptr, std::string_view glsl_version = default_glsl_version, shader_definition_list definitions = {}) {
+	explicit shader(GLenum type, const char* filename = nullptr, std::string_view glsl_version = default_glsl_version, shader_definition_list definitions = {}) {
 		if (!filename) {
 			return;
 		}

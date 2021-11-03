@@ -4,13 +4,16 @@
 #include "asset_manager.hpp"
 #include "flight_controller.hpp"
 #include "glsl.hpp"
+#include "light.hpp"
 #include "model.hpp"
 #include "renderer.hpp"
 
-#include <SDL.h>       // SDL_...
-#include <glm/glm.hpp> // glm::identity, glm::lookAt, glm::translate, glm::scale
-#include <memory>      // std::shared_ptr
-#include <vector>      // std::vector
+#include <SDL.h>                // SDL_...
+#include <glm/glm.hpp>          // glm::identity, glm::lookAt, glm::translate, glm::scale
+#include <glm/gtc/type_ptr.hpp> // glm::value_ptr
+#include <imgui.h>              // ImGui
+#include <memory>               // std::shared_ptr
+#include <vector>               // std::vector
 
 class scene final {
 public:
@@ -23,16 +26,30 @@ public:
 
 	auto tick(unsigned int tick_count, float delta_time) -> void {
 		(void)tick_count;
-		m_controller.update(delta_time, move_acceleration, move_drag, yaw_speed, pitch_speed);
+		(void)delta_time;
 	}
 
 	auto update(float elapsed_time, float delta_time) -> void {
 		// TODO
 		(void)elapsed_time;
-		(void)delta_time;
+		m_controller.update(delta_time, move_acceleration, move_drag, yaw_speed, pitch_speed);
 	}
 
-	auto draw(renderer& renderer) const -> void {
+	auto draw(renderer& renderer) -> void {
+		if (renderer.gui().enabled() && !m_point_lights.empty()) {
+			ImGui::Begin("Light");
+			ImGui::SliderFloat3("Position", glm::value_ptr(m_point_lights[0].position), -10.0f, 10.0f);
+			ImGui::End();
+		}
+		for (const auto& light : m_directional_lights) {
+			renderer.model().draw_directional_light(light);
+		}
+		for (const auto& light : m_point_lights) {
+			renderer.model().draw_point_light(light);
+		}
+		for (const auto& light : m_spot_lights) {
+			renderer.model().draw_spot_light(light);
+		}
 		for (const auto& object : m_objects) {
 			renderer.model().draw_model(object.model, object.transform);
 		}
@@ -67,6 +84,18 @@ private:
 	static constexpr auto pitch_speed = 3.49066f;
 
 	asset_manager& m_asset_manager;
+	std::vector<directional_light> m_directional_lights{};
+	std::vector<point_light> m_point_lights{
+		{
+			.position = {-1.0f, 8.0f, 2.0f},
+			.ambient = {0.2f, 0.2f, 0.2f},
+			.color = {0.7f, 0.7f, 0.7f},
+			.constant = 1.0f,
+			.linear = 0.045f,
+			.quadratic = 0.0075f,
+		},
+	};
+	std::vector<spot_light> m_spot_lights{};
 	std::vector<object> m_objects{
 		{m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"), glm::identity<mat4>()},
 		{m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),

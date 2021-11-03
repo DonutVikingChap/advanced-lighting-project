@@ -36,10 +36,11 @@ struct model_vertex final {
 using model_index = GLuint;
 
 struct model_material final {
-	std::uint8_t diffuse_texture_offset{};
-	std::uint8_t specular_texture_offset{};
+	std::uint8_t albedo_texture_offset{};
 	std::uint8_t normal_texture_offset{};
-	float shininess = 0.0f;
+	std::uint8_t roughness_texture_offset{};
+	std::uint8_t specular_texture_offset{};
+	std::uint8_t metallic_texture_offset{};
 };
 
 class model_mesh final {
@@ -143,10 +144,11 @@ private:
 
 		const auto& mat = *scene.mMaterials[mesh.mMaterialIndex];
 		const auto material = model_material{
-			.diffuse_texture_offset = add_texture(mat, aiTextureType_DIFFUSE, "default_diffuse.png"),
-			.specular_texture_offset = add_texture(mat, aiTextureType_SPECULAR, "default_specular.png"),
+			.albedo_texture_offset = add_texture(mat, aiTextureType_DIFFUSE, "default_diffuse.png"),
 			.normal_texture_offset = add_texture(mat, aiTextureType_NORMALS, "default_normal.png"),
-			.shininess = 32.0f, // TODO: Read from file.
+			.roughness_texture_offset = add_texture(mat, aiTextureType_DIFFUSE_ROUGHNESS, "default_specular.png"),
+			.specular_texture_offset = add_texture(mat, aiTextureType_SPECULAR, "default_specular.png"),
+			.metallic_texture_offset = add_texture(mat, aiTextureType_DIFFUSE, "default_specular.png"),
 		};
 
 		m_meshes.emplace_back(vertices, indices, material);
