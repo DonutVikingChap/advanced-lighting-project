@@ -1,5 +1,3 @@
-#version 330 core
-
 in vec2 io_texture_coordinates;
 
 out vec4 out_fragment_color;

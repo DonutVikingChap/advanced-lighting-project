@@ -6,7 +6,7 @@
 #include "opengl.hpp"
 
 #include <cstddef>      // std::byte, std::size_t
-#include <fmt/format.h> // fmt::...
+#include <fmt/format.h> // fmt::format
 #include <stdexcept>    // std::invalid_argument
 
 struct texture_options final {
@@ -126,9 +126,9 @@ private:
 		}
 
 		state_preserver(const state_preserver&) = delete;
-		state_preserver(state_preserver&&) = delete;
-		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		state_preserver(state_preserver &&) = delete;
+		auto operator=(const state_preserver&)->state_preserver& = delete;
+		auto operator=(state_preserver &&)->state_preserver& = delete;
 
 	private:
 		GLint m_unpack_alignment = 0;

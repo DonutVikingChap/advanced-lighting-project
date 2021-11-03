@@ -78,7 +78,10 @@ private:
 			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 		}
 
-		shader_program program{"assets/shaders/glyph.vert", "assets/shaders/glyph.frag"};
+		shader_program program{{
+			.vertex_shader_filename = "assets/shaders/glyph.vert",
+			.fragment_shader_filename = "assets/shaders/glyph.frag",
+		}};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
 		shader_uniform offset{program.get(), "offset"};
 		shader_uniform scale{program.get(), "scale"};

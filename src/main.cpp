@@ -10,7 +10,7 @@
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
 #include <cstdlib>      // EXIT_SUCCESS, EXIT_FAILURE
-#include <fmt/format.h> // fmt::...
+#include <fmt/format.h> // fmt::format, fmt::print
 #include <glm/glm.hpp>  // glm::identity
 #include <imgui.h>      // ImGui
 #include <memory>       // std::shared_ptr
@@ -27,7 +27,6 @@ public:
 		.tick_rate = 60,
 		.min_fps = 10,
 		.max_fps = 240,
-		.print_fps = false,
 		.v_sync = false,
 		.msaa_level = 0,
 	};

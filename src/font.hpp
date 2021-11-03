@@ -11,7 +11,7 @@
 
 #include <algorithm>     // std::max
 #include <cstddef>       // std::byte, std::size_t
-#include <fmt/format.h>  // fmt::...
+#include <fmt/format.h>  // fmt::format
 #include <memory>        // std::unique_ptr
 #include <stdexcept>     // std::runtime_error
 #include <string_view>   // std::u8string_view

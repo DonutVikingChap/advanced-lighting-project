@@ -7,7 +7,7 @@
 #include <SDL.h>        // SDL_..., Uint32, Uint64
 #include <algorithm>    // std::min
 #include <cmath>        // std::round
-#include <fmt/format.h> // fmt::...
+#include <fmt/format.h> // fmt::format
 #include <memory>       // std::unique_ptr
 #include <span>         // std::span
 #include <stdexcept>    // std::runtime_error
@@ -26,7 +26,6 @@ struct render_loop_options final {
 	float tick_rate = 60;
 	float min_fps = 10;
 	float max_fps = 240;
-	bool print_fps = false;
 	bool v_sync = false;
 	int msaa_level = 0;
 };
@@ -39,8 +38,7 @@ public:
 		, m_tick_interval(static_cast<Uint64>(std::round(static_cast<float>(m_clock_frequency) / options.tick_rate)))
 		, m_tick_delta_time(static_cast<float>(m_tick_interval) * m_clock_interval)
 		, m_min_frame_interval((options.max_fps == 0.0f) ? Uint64{0} : static_cast<Uint64>(std::round(static_cast<float>(m_clock_frequency) / options.max_fps)))
-		, m_max_ticks_per_frame((options.tick_rate <= options.min_fps) ? Uint64{1} : static_cast<Uint64>(options.tick_rate / options.min_fps))
-		, m_print_fps(options.print_fps) {
+		, m_max_ticks_per_frame((options.tick_rate <= options.min_fps) ? Uint64{1} : static_cast<Uint64>(options.tick_rate / options.min_fps)) {
 		(void)arguments; // TODO
 
 		constexpr auto set_attribute = [](SDL_GLattr attr, int value) -> void {
@@ -161,9 +159,6 @@ private:
 			++m_fps_count;
 			if (current_time - m_latest_fps_count_time >= m_clock_frequency) {
 				m_latest_fps_count_time = current_time;
-				if (m_print_fps) {
-					fmt::print("FPS: {}\n", m_fps_count);
-				}
 				m_latest_measured_fps = m_fps_count;
 				m_fps_count = 0;
 			}
@@ -221,7 +216,6 @@ private:
 	float m_tick_delta_time;
 	Uint64 m_min_frame_interval;
 	Uint64 m_max_ticks_per_frame;
-	bool m_print_fps;
 	Uint64 m_start_time = 0;
 	Uint64 m_latest_tick_time = 0;
 	Uint64 m_latest_frame_time = 0;

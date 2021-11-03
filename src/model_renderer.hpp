@@ -98,7 +98,17 @@ private:
 			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 		}
 
-		shader_program program{"assets/shaders/phong.vert", "assets/shaders/flat.frag"};
+		shader_program program{{
+			.vertex_shader_filename = "assets/shaders/phong.vert",
+			.fragment_shader_filename = "assets/shaders/flat.frag",
+			.definitions =
+				{
+					{"DIRECTIONAL_LIGHT_COUNT", directional_light_count},
+					{"POINT_LIGHT_COUNT", point_light_count},
+					{"SPOT_LIGHT_COUNT", spot_light_count},
+					{"CSM_CASCADE_COUNT", csm_cascade_count},
+				},
+		}};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
 		shader_uniform view_matrix{program.get(), "view_matrix"};
 		shader_uniform model_matrix{program.get(), "model_matrix"};

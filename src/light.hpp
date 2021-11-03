@@ -4,7 +4,7 @@
 #include "opengl.hpp"
 #include "shader.hpp"
 
-#include <fmt/format.h> // fmt::...
+#include <fmt/format.h> // fmt::format
 #include <string_view>  // std::string_view
 
 struct directional_light_uniform final {
@@ -13,15 +13,15 @@ struct directional_light_uniform final {
 		, ambient(program, fmt::format("{}.ambient", name).c_str())
 		, diffuse(program, fmt::format("{}.diffuse", name).c_str())
 		, specular(program, fmt::format("{}.specular", name).c_str())
-		, shadow_mapped(program, fmt::format("{}.shadow_mapped", name).c_str())
-		, active(program, fmt::format("{}.active", name).c_str()) {}
+		, is_shadow_mapped(program, fmt::format("{}.is_shadow_mapped", name).c_str())
+		, is_active(program, fmt::format("{}.is_active", name).c_str()) {}
 
 	shader_uniform direction;
 	shader_uniform ambient;
 	shader_uniform diffuse;
 	shader_uniform specular;
-	shader_uniform shadow_mapped;
-	shader_uniform active;
+	shader_uniform is_shadow_mapped;
+	shader_uniform is_active;
 };
 
 struct point_light_uniform final {
@@ -35,8 +35,8 @@ struct point_light_uniform final {
 		, quadratic(program, fmt::format("{}.quadratic", name).c_str())
 		, shadow_near_plane(program, fmt::format("{}.shadow_near_plane", name).c_str())
 		, shadow_far_plane(program, fmt::format("{}.shadow_far_plane", name).c_str())
-		, shadow_mapped(program, fmt::format("{}.shadow_mapped", name).c_str())
-		, active(program, fmt::format("{}.active", name).c_str()) {}
+		, is_shadow_mapped(program, fmt::format("{}.is_shadow_mapped", name).c_str())
+		, is_active(program, fmt::format("{}.is_active", name).c_str()) {}
 
 	shader_uniform position;
 	shader_uniform ambient;
@@ -47,8 +47,8 @@ struct point_light_uniform final {
 	shader_uniform quadratic;
 	shader_uniform shadow_near_plane;
 	shader_uniform shadow_far_plane;
-	shader_uniform shadow_mapped;
-	shader_uniform active;
+	shader_uniform is_shadow_mapped;
+	shader_uniform is_active;
 };
 
 struct spot_light_uniform final {
@@ -65,8 +65,8 @@ struct spot_light_uniform final {
 		, outer_cutoff(program, fmt::format("{}.outer_cutoff", name).c_str())
 		, shadow_near_plane(program, fmt::format("{}.shadow_near_plane", name).c_str())
 		, shadow_far_plane(program, fmt::format("{}.shadow_far_plane", name).c_str())
-		, shadow_mapped(program, fmt::format("{}.shadow_mapped", name).c_str())
-		, active(program, fmt::format("{}.active", name).c_str()) {}
+		, is_shadow_mapped(program, fmt::format("{}.is_shadow_mapped", name).c_str())
+		, is_active(program, fmt::format("{}.is_active", name).c_str()) {}
 
 	shader_uniform position;
 	shader_uniform direction;
@@ -80,8 +80,8 @@ struct spot_light_uniform final {
 	shader_uniform outer_cutoff;
 	shader_uniform shadow_near_plane;
 	shader_uniform shadow_far_plane;
-	shader_uniform shadow_mapped;
-	shader_uniform active;
+	shader_uniform is_shadow_mapped;
+	shader_uniform is_active;
 };
 
 #endif

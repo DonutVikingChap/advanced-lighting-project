@@ -1,10 +1,3 @@
-#version 330 core
-
-#define DIRECTIONAL_LIGHT_COUNT 1
-#define POINT_LIGHT_COUNT 2
-#define SPOT_LIGHT_COUNT 1
-#define CSM_CASCADE_COUNT 8
-
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
 layout (location = 2) in vec3 in_tangent;
