@@ -38,8 +38,32 @@ public:
 
 	auto render(passkey<renderer>) -> void {
 		ImGui::SetCurrentContext(m_context.get());
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		if (enabled()) {
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		} else {
+			ImGui::EndFrame();
+		}
+	}
+
+	[[nodiscard]] auto enabled() const noexcept -> bool {
+		return m_enabled;
+	}
+
+	auto enabled(bool enable) noexcept -> void {
+		m_enabled = enable;
+	}
+
+	auto enable() noexcept -> void {
+		m_enabled = true;
+	}
+
+	auto disable() noexcept -> void {
+		m_enabled = false;
+	}
+
+	auto toggle_enabled() noexcept -> void {
+		m_enabled = !m_enabled;
 	}
 
 private:
@@ -55,6 +79,7 @@ private:
 
 	SDL_Window* m_window;
 	context_ptr m_context{};
+	bool m_enabled = false;
 };
 
 #endif

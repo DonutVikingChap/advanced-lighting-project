@@ -37,7 +37,9 @@ public:
 	static constexpr auto far_z = 1000.0f;
 
 	explicit application(std::span<char*> arguments)
-		: render_loop(arguments, options) {}
+		: render_loop(arguments, options) {
+		m_renderer.gui().enable();
+	}
 
 private:
 	auto resize(int width, int height) -> void override {
@@ -46,7 +48,19 @@ private:
 	}
 
 	auto handle_event(const SDL_Event& e) -> void override {
-		m_scene.handle_event(e); // TODO: Don't do m_scene.handle_event if the GUI is active.
+		switch (e.type) {
+			case SDL_KEYDOWN:
+				if (e.key.keysym.scancode == SDL_SCANCODE_Z || e.key.keysym.sym == SDLK_ESCAPE) {
+					toggle_gui();
+				}
+				break;
+			case SDL_WINDOWEVENT:
+				if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+					enable_gui();
+				}
+				break;
+		}
+		m_scene.handle_event(e);
 		m_renderer.handle_event(e);
 	}
 
@@ -61,7 +75,9 @@ private:
 
 	auto display() -> void override {
 		// TODO
-		ImGui::ShowDemoWindow();
+		if (m_renderer.gui().enabled()) {
+			ImGui::ShowDemoWindow();
+		}
 		m_scene.draw(m_renderer);
 		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("FPS: {}", latest_measured_fps()));
 		m_renderer.text().draw_text(m_main_font, {200.0f, 600.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, "Some text. Wow!\n(Cool, even parentheses work)");
@@ -72,6 +88,24 @@ private:
 		m_renderer.text().draw_text(m_emoji_font, {100.0f, 428.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"😀😃😄😁😆");
 		m_renderer.text().draw_text(m_emoji_font, {100.0f, 460.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"👩🏾‍💻");
 		m_renderer.render(framebuffer::get_default(), m_viewport, m_scene.view_matrix(), m_scene.view_position());
+	}
+
+	auto enable_gui() -> void {
+		m_scene.controller().stop_controlling();
+		m_renderer.gui().enable();
+	}
+
+	auto disable_gui() -> void {
+		m_scene.controller().start_controlling();
+		m_renderer.gui().disable();
+	}
+
+	auto toggle_gui() -> void {
+		if (m_renderer.gui().enabled()) {
+			disable_gui();
+		} else {
+			enable_gui();
+		}
 	}
 
 	asset_manager m_asset_manager{};

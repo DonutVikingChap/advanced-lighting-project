@@ -81,14 +81,15 @@ void main() {
     vec3 mat_diffuse = texture(material_diffuse, io_texture_coordinates).rgb;
     float mat_specular = texture(material_diffuse, io_texture_coordinates).r;
     
+    vec3 normal = normalize(io_normal);
     vec3 view_direction = normalize(view_position - io_fragment_position);
 
     vec3 result = vec3(0.0, 0.0, 0.0);
 
     for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
         vec3 ambient = directional_lights[i].ambient * directional_lights[i].ambient;
-        float n_dot_l = dot(io_normal, directional_lights[i].direction);
-        vec3 reflect_dir = reflect(-directional_lights[i].direction, io_normal);
+        float n_dot_l = dot(normal, directional_lights[i].direction);
+        vec3 reflect_dir = reflect(-directional_lights[i].direction, normal);
     
         vec3 diffuse = n_dot_l * mat_diffuse * directional_lights[i].diffuse;
     
@@ -107,8 +108,8 @@ void main() {
         float attenuation = 1.0 / (point_lights[i].constant + point_lights[i].linear * light_distance + point_lights[i].quadratic * light_distance_squared);
 
         vec3 ambient = point_lights[i].ambient * point_lights[i].ambient;
-        float n_dot_l = dot(io_normal, light_direction);
-        vec3 reflect_dir = reflect(-light_direction, io_normal);
+        float n_dot_l = dot(normal, light_direction);
+        vec3 reflect_dir = reflect(-light_direction, normal);
 
         vec3 diffuse = mat_diffuse * point_lights[i].diffuse;
 
@@ -129,8 +130,8 @@ void main() {
 	    float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[i].outer_cutoff) / epsilon);
     
         vec3 ambient = spot_lights[i].ambient * spot_lights[i].ambient;
-        float n_dot_l = dot(io_normal, spot_lights[i].direction);
-        vec3 reflect_dir = reflect(-light_direction, io_normal);
+        float n_dot_l = dot(normal, spot_lights[i].direction);
+        vec3 reflect_dir = reflect(-light_direction, normal);
 
         float attenuation = intensity / (spot_lights[i].constant + spot_lights[i].linear * light_distance + spot_lights[i].quadratic * light_distance_squared);
 

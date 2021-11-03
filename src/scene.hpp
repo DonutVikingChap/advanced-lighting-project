@@ -38,6 +38,14 @@ public:
 		}
 	}
 
+	[[nodiscard]] auto controller() noexcept -> flight_controller& {
+		return m_controller;
+	}
+
+	[[nodiscard]] auto controller() const noexcept -> const flight_controller& {
+		return m_controller;
+	}
+
 	[[nodiscard]] auto view_position() const noexcept -> vec3 {
 		return m_controller.position();
 	}

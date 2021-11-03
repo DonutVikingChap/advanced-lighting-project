@@ -90,26 +90,6 @@ public:
 					break;
 			}
 		}
-		switch (e.type) {
-			case SDL_MOUSEBUTTONDOWN:
-				if (e.button.button == SDL_BUTTON_LEFT) {
-					toggle_controlling();
-				}
-				break;
-			case SDL_KEYDOWN:
-				if (e.key.keysym.scancode == SDL_SCANCODE_Z) {
-					toggle_controlling();
-				}
-				if (e.key.keysym.sym == SDLK_ESCAPE) {
-					stop_controlling();
-				}
-				break;
-			case SDL_WINDOWEVENT:
-				if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
-					stop_controlling();
-				}
-				break;
-		}
 	}
 
 	auto update(float delta_time, float move_acceleration, float move_drag, float yaw_speed, float pitch_speed) -> void {
@@ -143,6 +123,10 @@ public:
 		const auto average_velocity = (m_velocity + new_velocity) * 0.5f;
 		m_velocity = new_velocity;
 		m_position += average_velocity * delta_time;
+	}
+
+	[[nodiscard]] auto controlling() const noexcept -> bool {
+		return m_inputs.controlling;
 	}
 
 	[[nodiscard]] auto position() const noexcept -> vec3 {
