@@ -87,7 +87,7 @@ private:
 				} catch (const std::exception& e) {
 					fmt::print(stderr, "Failed to reload shaders: {}\n", e.what());
 				} catch (...) {
-					fmt::print(stderr, "Failed to reload shaders!");
+					fmt::print(stderr, "Failed to reload shaders!\n");
 				}
 			}
 			ImGui::End();
