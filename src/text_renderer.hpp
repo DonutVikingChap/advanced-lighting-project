@@ -23,15 +23,10 @@ class renderer;
 class text_renderer final {
 public:
 	explicit text_renderer(std::shared_ptr<quad> quad)
-		: m_quad(std::move(quad)) {
-		glUseProgram(m_glyph_shader.program.get());
-		glUniform1i(m_glyph_shader.text_texture.location(), 0);
-	}
+		: m_quad(std::move(quad)) {}
 
-	auto resize(passkey<renderer>, int width, int height) -> void { // NOLINT(readability-make-member-function-const)
-		const auto projection_matrix = glm::ortho(0.0f, static_cast<float>(width), 0.0f, static_cast<float>(height));
-		glUseProgram(m_glyph_shader.program.get());
-		glUniformMatrix4fv(m_glyph_shader.projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
+	auto resize(passkey<renderer>, int width, int height) -> void {
+		m_glyph_shader.resize(width, height);
 	}
 
 	auto draw_text(std::shared_ptr<font> font, vec2 offset, vec2 scale, vec4 color, std::u8string str) -> void {
@@ -65,8 +60,24 @@ public:
 		glEnable(GL_CULL_FACE);
 	}
 
+	auto reload_shaders(int width, int height) -> void {
+		m_glyph_shader = glyph_shader{};
+		m_glyph_shader.resize(width, height);
+	}
+
 private:
 	struct glyph_shader final {
+		glyph_shader() {
+			glUseProgram(program.get());
+			glUniform1i(text_texture.location(), 0);
+		}
+
+		auto resize(int width, int height) -> void { // NOLINT(readability-make-member-function-const)
+			const auto projection_matrix = glm::ortho(0.0f, static_cast<float>(width), 0.0f, static_cast<float>(height));
+			glUseProgram(program.get());
+			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
+		}
+
 		shader_program program{"assets/shaders/glyph.vert", "assets/shaders/glyph.frag"};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
 		shader_uniform offset{program.get(), "offset"};

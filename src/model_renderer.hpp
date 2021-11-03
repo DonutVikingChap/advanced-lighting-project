@@ -27,11 +27,8 @@ public:
 	static constexpr auto spot_light_count = std::size_t{1};
 	static constexpr auto csm_cascade_count = std::size_t{8};
 
-	auto resize(passkey<renderer>, int width, int height, float vertical_fov, float near_z, float far_z) -> void { // NOLINT(readability-make-member-function-const)
-		const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
-		const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
-		glUseProgram(m_model_shader.program.get());
-		glUniformMatrix4fv(m_model_shader.projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
+	auto resize(passkey<renderer>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
+		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
 	}
 
 #if 0
@@ -87,8 +84,20 @@ public:
 		m_model_instances.clear();
 	}
 
+	auto reload_shaders(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
+		m_model_shader = model_shader{};
+		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
+	}
+
 private:
 	struct model_shader final {
+		auto resize(int width, int height, float vertical_fov, float near_z, float far_z) -> void { // NOLINT(readability-make-member-function-const)
+			const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+			const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
+			glUseProgram(program.get());
+			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
+		}
+
 		shader_program program{"assets/shaders/phong.vert", "assets/shaders/flat.frag"};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
 		shader_uniform view_matrix{program.get(), "view_matrix"};

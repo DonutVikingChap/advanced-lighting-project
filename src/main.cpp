@@ -32,7 +32,7 @@ public:
 		.msaa_level = 0,
 	};
 
-	static constexpr auto vertical_field_of_view = 1.57079633f;
+	static constexpr auto vertical_fov = 1.57079633f;
 	static constexpr auto near_z = 0.01f;
 	static constexpr auto far_z = 1000.0f;
 
@@ -43,7 +43,7 @@ public:
 
 private:
 	auto resize(int width, int height) -> void override {
-		m_renderer.resize(width, height, vertical_field_of_view, near_z, far_z);
+		m_renderer.resize(width, height, vertical_fov, near_z, far_z);
 		m_viewport = viewport{0, 0, width, height};
 	}
 
@@ -77,6 +77,21 @@ private:
 		// TODO
 		if (m_renderer.gui().enabled()) {
 			ImGui::ShowDemoWindow();
+
+			ImGui::Begin("Shaders");
+			if (ImGui::Button("Reload shaders")) {
+				try {
+					auto width = 0;
+					auto height = 0;
+					SDL_GetWindowSize(get_window(), &width, &height);
+					m_renderer.reload_shaders(width, height, vertical_fov, near_z, far_z);
+				} catch (const std::exception& e) {
+					fmt::print(stderr, "Failed to reload shaders: {}\n", e.what());
+				} catch (...) {
+					fmt::print(stderr, "Failed to reload shaders!");
+				}
+			}
+			ImGui::End();
 		}
 		m_scene.draw(m_renderer);
 		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("FPS: {}", latest_measured_fps()));

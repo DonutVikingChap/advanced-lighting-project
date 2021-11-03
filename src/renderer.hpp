@@ -69,6 +69,11 @@ public:
 		m_gui_renderer.render({});
 	}
 
+	auto reload_shaders(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
+		m_model_renderer.reload_shaders(width, height, vertical_fov, near_z, far_z);
+		m_text_renderer.reload_shaders(width, height);
+	}
+
 	[[nodiscard]] auto model() -> model_renderer& {
 		return m_model_renderer;
 	}
