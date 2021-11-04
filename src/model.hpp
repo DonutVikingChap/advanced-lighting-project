@@ -124,7 +124,7 @@ private:
 			const auto& normal = mesh.mNormals[i];
 			const auto& tangent = (mesh.mTangents) ? mesh.mTangents[i] : zero_vector;
 			const auto& bitangent = (mesh.mBitangents) ? mesh.mBitangents[i] : zero_vector;
-			const auto& texture_coordinates = (mesh.mTextureCoords[0]) ? *mesh.mTextureCoords[0] : zero_vector;
+			const auto& texture_coordinates = (mesh.mTextureCoords[0]) ? mesh.mTextureCoords[0][i] : zero_vector;
 			vertices.push_back(model_vertex{
 				.position = vec3{position.x, position.y, position.z},
 				.normal = vec3{normal.x, normal.y, normal.z},

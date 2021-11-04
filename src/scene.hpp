@@ -39,6 +39,11 @@ public:
 		if (renderer.gui().enabled() && !m_point_lights.empty()) {
 			ImGui::Begin("Light");
 			ImGui::SliderFloat3("Position", glm::value_ptr(m_point_lights[0].position), -10.0f, 10.0f);
+			ImGui::SliderFloat3("Ambient", glm::value_ptr(m_point_lights[0].ambient), 0.0f, 10.0f);
+			ImGui::SliderFloat3("Color", glm::value_ptr(m_point_lights[0].color), 0.0f, 10.0f);
+			ImGui::SliderFloat("Constant", &m_point_lights[0].constant, 0.0f, 1.0f);
+			ImGui::SliderFloat("Linear", &m_point_lights[0].linear, 0.0f, 1.0f);
+			ImGui::SliderFloat("Quadratic", &m_point_lights[0].quadratic, 0.0f, 1.0f);
 			ImGui::End();
 		}
 		for (const auto& light : m_directional_lights) {
@@ -102,6 +107,8 @@ private:
 			glm::scale(glm::translate(glm::identity<mat4>(), vec3{8.0f, -1.0f, 0.0f}), vec3{0.5f})},
 		{m_asset_manager.load_textured_model("assets/models/alarm_clock_01_4k.obj", "assets/textures/"),
 			glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f})},
+		{m_asset_manager.load_textured_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
+			glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f})},
 	};
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, -0.674740942224f};
 };

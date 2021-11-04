@@ -91,7 +91,6 @@ void main() {
     normal = texture(material_normal, io_texture_coordinates).rgb;
     normal = normal * 2.0 - 1.0;
     normal = normalize(TBN * normal);
-    normal = io_normal;
 
     vec3 view_direction = normalize(view_position - io_fragment_position);
 
@@ -156,7 +155,7 @@ void main() {
         
         result +=
             attenuation * pbr(
-                io_normal,
+                normal,
                 view_direction,
                 light_direction,
                 spot_lights[i].color,
