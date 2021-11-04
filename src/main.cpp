@@ -74,7 +74,6 @@ private:
 	}
 
 	auto display() -> void override {
-		// TODO
 		if (m_renderer.gui().enabled()) {
 			ImGui::ShowDemoWindow();
 
@@ -94,14 +93,8 @@ private:
 			ImGui::End();
 		}
 		m_scene.draw(m_renderer);
-		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("FPS: {}", latest_measured_fps()));
-		m_renderer.text().draw_text(m_main_font, {200.0f, 600.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, "Some text. Wow!\n(Cool, even parentheses work)");
-		m_renderer.text().draw_text(m_main_font, {100.0f, 300.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"Here's some crazy UTF-8 text that will probably break everything:");
-		m_renderer.text().draw_text(m_japanese_font, {100.0f, 332.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"雨にもまけず");
-		m_renderer.text().draw_text(m_main_font, {100.0f, 364.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"And here's some more:");
-		m_renderer.text().draw_text(m_arabic_font, {100.0f, 396.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"التفاصيل");
-		m_renderer.text().draw_text(m_emoji_font, {100.0f, 428.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"😀😃😄😁😆");
-		m_renderer.text().draw_text(m_emoji_font, {100.0f, 460.0f}, {1.0f, 1.0f}, {0.5f, 1.0f, 1.0f, 1.0f}, u8"👩🏾‍💻");
+		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("     FPS: {}", latest_measured_fps()));
+		m_renderer.text().draw_text(m_emoji_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, u8"⏩");
 		m_renderer.render(framebuffer::get_default(), m_viewport, m_scene.view_matrix(), m_scene.view_position());
 	}
 
@@ -126,8 +119,6 @@ private:
 	asset_manager m_asset_manager{};
 	renderer m_renderer{m_asset_manager.load_quad(), get_window(), get_gl_context()};
 	std::shared_ptr<font> m_main_font = m_asset_manager.load_font("assets/fonts/liberation/LiberationSans-Regular.ttf", 32u);
-	std::shared_ptr<font> m_arabic_font = m_asset_manager.load_font("assets/fonts/noto/NotoSansArabic-Regular.ttf", 32u);
-	std::shared_ptr<font> m_japanese_font = m_asset_manager.load_font("assets/fonts/noto/NotoSansJP-Regular.otf", 32u);
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
 	scene m_scene{m_asset_manager};
 	viewport m_viewport{};
