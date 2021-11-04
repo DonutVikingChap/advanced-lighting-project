@@ -1,0 +1,16 @@
+# Blender MTL File: 'brass_vase_01_1k.blend'
+# Material Count: 1
+
+newmtl brass_vase_001
+Ns 554.210072
+Ka 1.000000 1.000000 1.000000
+Kd 0.507069 0.507069 0.507069
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump brass_vase_01_nor_gl_1k.exr
+map_Kd brass_vase_01_diff_1k.jpg
+map_Ns brass_vase_01_rough_1k.jpg
+refl brass_vase_01_metal_1k.exr
