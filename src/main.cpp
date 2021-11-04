@@ -58,6 +58,7 @@ private:
 					enable_gui();
 				}
 				break;
+			default: break;
 		}
 		m_scene.handle_event(e);
 		m_renderer.handle_event(e);
