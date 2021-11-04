@@ -87,7 +87,7 @@ private:
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{
 		{
-			.position = {-1.0f, 8.0f, 2.0f},
+			.position = {1.5f, 1.5f, 2.3f},
 			.ambient = {0.2f, 0.2f, 0.2f},
 			.color = {0.7f, 0.7f, 0.7f},
 			.constant = 1.0f,
@@ -99,7 +99,9 @@ private:
 	std::vector<object> m_objects{
 		{m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"), glm::identity<mat4>()},
 		{m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),
-			glm::translate(glm::scale(glm::identity<mat4>(), vec3{0.5f}), vec3{8.0f, -1.0f, 0.0f})},
+			glm::scale(glm::translate(glm::identity<mat4>(), vec3{8.0f, -1.0f, 0.0f}), vec3{0.5f})},
+		{m_asset_manager.load_textured_model("assets/models/alarm_clock_01_4k.obj", "assets/textures/"),
+			glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f})},
 	};
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, -0.674740942224f};
 };
