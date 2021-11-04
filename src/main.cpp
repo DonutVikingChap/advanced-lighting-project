@@ -117,7 +117,7 @@ private:
 	}
 
 	asset_manager m_asset_manager{};
-	renderer m_renderer{m_asset_manager.load_quad(), get_window(), get_gl_context()};
+	renderer m_renderer{m_asset_manager.load_cube_map_mesh(), m_asset_manager.load_quad_mesh(), get_window(), get_gl_context()};
 	std::shared_ptr<font> m_main_font = m_asset_manager.load_font("assets/fonts/liberation/LiberationSans-Regular.ttf", 32u);
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
 	scene m_scene{m_asset_manager};

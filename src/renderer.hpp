@@ -1,6 +1,7 @@
 #ifndef RENDERER_HPP
 #define RENDERER_HPP
 
+#include "cube_map.hpp"
 #include "font.hpp"
 #include "framebuffer.hpp"
 #include "glsl.hpp"
@@ -8,6 +9,8 @@
 #include "mesh.hpp"
 #include "model_renderer.hpp"
 #include "opengl.hpp"
+#include "quad.hpp"
+#include "skybox_renderer.hpp"
 #include "text_renderer.hpp"
 #include "texture.hpp"
 #include "viewport.hpp"
@@ -21,8 +24,9 @@
 
 class renderer final {
 public:
-	renderer(std::shared_ptr<quad> quad, SDL_Window* window, SDL_GLContext gl_context)
-		: m_text_renderer(std::move(quad))
+	renderer(std::shared_ptr<cube_map_mesh> cube_map_mesh, std::shared_ptr<quad_mesh> quad_mesh, SDL_Window* window, SDL_GLContext gl_context)
+		: m_skybox_renderer(std::move(cube_map_mesh))
+		, m_text_renderer(std::move(quad_mesh))
 		, m_gui_renderer(window, gl_context) {
 		glEnable(GL_CULL_FACE);
 
@@ -44,6 +48,7 @@ public:
 
 	auto resize(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
 		m_model_renderer.resize({}, width, height, vertical_fov, near_z, far_z);
+		m_skybox_renderer.resize({}, width, height, vertical_fov, near_z, far_z);
 		m_text_renderer.resize({}, width, height);
 	}
 
@@ -65,17 +70,23 @@ public:
 		glStencilMask(0x00);
 
 		m_model_renderer.render({}, view_matrix, view_position);
+		m_skybox_renderer.render({}, mat3{view_matrix});
 		m_text_renderer.render({}, viewport);
 		m_gui_renderer.render({});
 	}
 
 	auto reload_shaders(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
 		m_model_renderer.reload_shaders(width, height, vertical_fov, near_z, far_z);
+		m_skybox_renderer.reload_shaders(width, height, vertical_fov, near_z, far_z);
 		m_text_renderer.reload_shaders(width, height);
 	}
 
 	[[nodiscard]] auto model() -> model_renderer& {
 		return m_model_renderer;
+	}
+
+	[[nodiscard]] auto skybox() -> skybox_renderer& {
+		return m_skybox_renderer;
 	}
 
 	[[nodiscard]] auto text() -> text_renderer& {
@@ -88,6 +99,7 @@ public:
 
 private:
 	model_renderer m_model_renderer{};
+	skybox_renderer m_skybox_renderer;
 	text_renderer m_text_renderer;
 	gui_renderer m_gui_renderer;
 };

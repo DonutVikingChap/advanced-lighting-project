@@ -77,16 +77,16 @@ private:
 
 class model final {
 public:
-	model(const char* path) {
+	model(const char* filename) {
 		auto importer = Assimp::Importer{};
-		const auto* const scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
+		const auto* const scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
 		if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !scene->mRootNode) {
-			throw model_error{fmt::format("Failed to load model \"{}\": {}", path, importer.GetErrorString())};
+			throw model_error{fmt::format("Failed to load model \"{}\": {}", filename, importer.GetErrorString())};
 		}
 		try {
 			add_node(*scene->mRootNode, *scene);
 		} catch (const std::exception& e) {
-			throw model_error{fmt::format("Failed to load model \"{}\": {}", path, e.what())};
+			throw model_error{fmt::format("Failed to load model \"{}\": {}", filename, e.what())};
 		}
 	}
 

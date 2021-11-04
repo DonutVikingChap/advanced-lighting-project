@@ -13,7 +13,7 @@ struct quad_vertex final {
 	vec2 texture_coordinates{};
 };
 
-class quad final {
+class quad_mesh final {
 public:
 	static constexpr auto vertex_count = std::size_t{6};
 

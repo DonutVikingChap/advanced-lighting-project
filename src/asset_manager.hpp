@@ -1,23 +1,31 @@
 #ifndef ASSET_MANAGER_HPP
 #define ASSET_MANAGER_HPP
 
+#include "cube_map.hpp"
 #include "font.hpp"
 #include "image.hpp"
 #include "model.hpp"
 #include "quad.hpp"
 #include "texture.hpp"
 
+#include <algorithm>     // std::min
 #include <cstddef>       // std::size_t
+#include <fmt/format.h>  // fmt::format
 #include <functional>    // std::hash
 #include <memory>        // std::unique_ptr, std::shared_ptr, std::weak_ptr, std::make_shared
 #include <string>        // std::string
+#include <string_view>   // std::string_view
 #include <unordered_map> // std::unordered_map, std::erase_if
 #include <utility>       // std::move
 
 class asset_manager final {
 public:
-	[[nodiscard]] auto load_quad() -> std::shared_ptr<quad> {
-		return m_quad;
+	[[nodiscard]] auto load_quad_mesh() -> const std::shared_ptr<quad_mesh>& {
+		return m_quad_mesh;
+	}
+
+	[[nodiscard]] auto load_cube_map_mesh() -> const std::shared_ptr<cube_map_mesh>& {
+		return m_cube_map_mesh;
 	}
 
 	[[nodiscard]] auto load_font(std::string filename, unsigned int size) -> std::shared_ptr<font> {
@@ -61,16 +69,16 @@ public:
 		return ptr;
 	}
 
-	[[nodiscard]] auto load_model_textures(const char* filename_prefix, const model& model) -> std::vector<std::shared_ptr<texture>> {
+	[[nodiscard]] auto load_model_textures(std::string_view filename_prefix, const model& model) -> std::vector<std::shared_ptr<texture>> {
 		auto result = std::vector<std::shared_ptr<texture>>{};
 		result.reserve(model.texture_names().size());
 		for (const auto& texture_name : model.texture_names()) {
-			result.push_back(load_texture(filename_prefix + texture_name));
+			result.push_back(load_texture(fmt::format("{}{}", filename_prefix, texture_name)));
 		}
 		return result;
 	}
 
-	[[nodiscard]] auto load_textured_model(std::string filename, const char* textures_filename_prefix) -> std::shared_ptr<textured_model> {
+	[[nodiscard]] auto load_textured_model(std::string filename, std::string_view textures_filename_prefix) -> std::shared_ptr<textured_model> {
 		const auto it = m_textured_models.try_emplace(std::move(filename)).first;
 		if (auto ptr = it->second.lock()) {
 			return ptr;
@@ -78,6 +86,40 @@ public:
 		auto model = load_model(it->first);
 		auto textures = load_model_textures(textures_filename_prefix, *model);
 		auto ptr = std::make_shared<textured_model>(std::move(model), std::move(textures));
+		it->second = ptr;
+		return ptr;
+	}
+
+	[[nodiscard]] auto load_cube_map_texture(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<cube_map_texture> {
+		const auto it = m_cube_map_textures.try_emplace(fmt::format("{}%{}", filename_prefix, extension)).first;
+		if (auto ptr = it->second.lock()) {
+			return ptr;
+		}
+		const auto images = std::array<image, 6>{
+			image{fmt::format("{}px{}", filename_prefix, extension).c_str()},
+			image{fmt::format("{}nx{}", filename_prefix, extension).c_str()},
+			image{fmt::format("{}py{}", filename_prefix, extension).c_str()},
+			image{fmt::format("{}ny{}", filename_prefix, extension).c_str()},
+			image{fmt::format("{}pz{}", filename_prefix, extension).c_str()},
+			image{fmt::format("{}nz{}", filename_prefix, extension).c_str()},
+		};
+		const auto image_views = std::array<image_view, 6>{
+			image_view{images[0]},
+			image_view{images[1]},
+			image_view{images[2]},
+			image_view{images[3]},
+			image_view{images[4]},
+			image_view{images[5]},
+		};
+		const auto internal_format = internal_texture_format(std::min({
+			images[0].pixel_size(),
+			images[1].pixel_size(),
+			images[2].pixel_size(),
+			images[3].pixel_size(),
+			images[4].pixel_size(),
+			images[5].pixel_size(),
+		}));
+		auto ptr = std::make_shared<cube_map_texture>(internal_format, image_views, cube_map_texture_options);
 		it->second = ptr;
 		return ptr;
 	}
@@ -117,6 +159,13 @@ private:
 		.use_mip_map = true,
 	};
 
+	static constexpr auto cube_map_texture_options = texture_options{
+		.max_anisotropy = 1.0f,
+		.repeat = false,
+		.use_linear_filtering = true,
+		.use_mip_map = false,
+	};
+
 	struct font_key final {
 		std::string filename{};
 		unsigned int size = 0u;
@@ -134,14 +183,17 @@ private:
 	using texture_cache = std::unordered_map<std::string, std::weak_ptr<texture>>;
 	using model_cache = std::unordered_map<std::string, std::weak_ptr<model>>;
 	using textured_model_cache = std::unordered_map<std::string, std::weak_ptr<textured_model>>;
+	using cube_map_texture_cache = std::unordered_map<std::string, std::weak_ptr<cube_map_texture>>;
 
-	std::shared_ptr<quad> m_quad = std::make_shared<quad>();
+	std::shared_ptr<quad_mesh> m_quad_mesh = std::make_shared<quad_mesh>();
+	std::shared_ptr<cube_map_mesh> m_cube_map_mesh = std::make_shared<cube_map_mesh>();
 	font_library m_font_library{};
 	font_cache m_fonts{};
 	image_cache m_images{};
 	texture_cache m_textures{};
 	model_cache m_models{};
 	textured_model_cache m_textured_models{};
+	cube_map_texture_cache m_cube_map_textures{};
 };
 
 #endif

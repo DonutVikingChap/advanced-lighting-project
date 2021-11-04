@@ -2,9 +2,10 @@
 #define TEXT_RENDERER_HPP
 
 #include "font.hpp"
-#include "mesh.hpp"
+#include "glsl.hpp"
 #include "opengl.hpp"
 #include "passkey.hpp"
+#include "quad.hpp"
 #include "shader.hpp"
 #include "utf8.hpp"
 #include "viewport.hpp"
@@ -22,8 +23,8 @@ class renderer;
 
 class text_renderer final {
 public:
-	explicit text_renderer(std::shared_ptr<quad> quad)
-		: m_quad(std::move(quad)) {}
+	explicit text_renderer(std::shared_ptr<quad_mesh> quad_mesh)
+		: m_quad_mesh(std::move(quad_mesh)) {}
 
 	auto resize(passkey<renderer>, int width, int height) -> void {
 		m_glyph_shader.resize(width, height);
@@ -43,7 +44,7 @@ public:
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		glUseProgram(m_glyph_shader.program.get());
-		glBindVertexArray(m_quad->get());
+		glBindVertexArray(m_quad_mesh->get());
 
 		glActiveTexture(GL_TEXTURE0);
 
@@ -128,7 +129,7 @@ private:
 				glUniform2fv(m_glyph_shader.scale.location(), 1, glm::value_ptr(glyph_scale));
 				glUniform2fv(m_glyph_shader.texture_offset.location(), 1, glm::value_ptr(glyph.texture_offset));
 				glUniform2fv(m_glyph_shader.texture_scale.location(), 1, glm::value_ptr(glyph.texture_scale));
-				glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(quad::vertex_count));
+				glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(quad_mesh::vertex_count));
 				x += (glyph.advance + font.kerning(ch, (it == code_points.end()) ? 0 : *it)) * text.scale.x;
 			}
 		}
@@ -136,7 +137,7 @@ private:
 
 	using text_instance_map = std::unordered_map<std::shared_ptr<font>, std::vector<text_instance>>;
 
-	std::shared_ptr<quad> m_quad;
+	std::shared_ptr<quad_mesh> m_quad_mesh;
 	glyph_shader m_glyph_shader{};
 	text_instance_map m_text_instances{};
 };

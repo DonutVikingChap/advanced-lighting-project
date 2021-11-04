@@ -7,6 +7,7 @@
 
 #include <cstddef>      // std::byte, std::size_t
 #include <fmt/format.h> // fmt::format
+#include <span>         // std::span
 #include <stdexcept>    // std::invalid_argument
 
 struct texture_options final {
@@ -31,9 +32,8 @@ public:
 
 	texture(GLint internal_format, const std::byte* pixels, std::size_t width, std::size_t height, GLenum format, const texture_options& options = {})
 		: m_width(width)
-		, m_height(height)
-		, m_format(format) {
-		const auto preserver = state_preserver{};
+		, m_height(height) {
+		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
 
 		set_unpack_alignment(format);
 
@@ -45,9 +45,8 @@ public:
 
 	texture(GLint internal_format, const std::byte* pixels, std::size_t width, std::size_t height, std::size_t depth, GLenum format, const texture_options& options = {})
 		: m_width(width)
-		, m_height(height)
-		, m_format(format) {
-		const auto preserver = state_preserver{};
+		, m_height(height) {
+		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
 
 		set_unpack_alignment(format);
 
@@ -61,8 +60,22 @@ public:
 	texture(GLint internal_format, const image_view& image, const texture_options& options = {})
 		: texture(internal_format, image.data(), image.width(), image.height(), pixel_format(image.pixel_size()), options) {}
 
+	texture(GLint internal_format, std::span<const image_view, 6> cube_map_images, const texture_options& options = {.repeat = false}) {
+		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
+
+		glBindTexture(GL_TEXTURE_CUBE_MAP, m_texture.get());
+		for (auto i = std::size_t{0}; i < cube_map_images.size(); ++i) {
+			const auto& image = cube_map_images[i];
+			const auto format = pixel_format(image.pixel_size());
+			set_unpack_alignment(format);
+			glTexImage2D(static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), 0, internal_format, image.width(), image.height(), 0, format, GL_UNSIGNED_BYTE, image.data());
+		}
+
+		set_options(GL_TEXTURE_CUBE_MAP, options);
+	}
+
 	auto paste(const std::byte* pixels, std::size_t width, std::size_t height, GLenum format, std::size_t x, std::size_t y) -> void {
-		const auto preserver = state_preserver{};
+		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
 
 		set_unpack_alignment(format);
 
@@ -72,7 +85,7 @@ public:
 	}
 
 	auto paste(const std::byte* pixels, std::size_t width, std::size_t height, std::size_t depth, GLenum format, std::size_t x, std::size_t y, std::size_t z) -> void {
-		const auto preserver = state_preserver{};
+		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
 
 		set_unpack_alignment(format);
 
@@ -113,15 +126,14 @@ public:
 private:
 	class [[nodiscard]] state_preserver final {
 	public:
-		state_preserver() noexcept {
+		state_preserver(GLenum texture_target, GLenum texture_target_binding) noexcept
+			: m_texture_target(texture_target) {
 			glGetIntegerv(GL_UNPACK_ALIGNMENT, &m_unpack_alignment);
-			glGetIntegerv(GL_TEXTURE_BINDING_2D, &m_texture_binding_2d);
-			glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &m_texture_binding_2d_array);
+			glGetIntegerv(texture_target_binding, &m_texture);
 		}
 
 		~state_preserver() {
-			glBindTexture(GL_TEXTURE_2D_ARRAY, m_texture_binding_2d_array);
-			glBindTexture(GL_TEXTURE_2D, m_texture_binding_2d);
+			glBindTexture(m_texture_target, m_texture);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, m_unpack_alignment);
 		}
 
@@ -131,9 +143,9 @@ private:
 		auto operator=(state_preserver &&)->state_preserver& = delete;
 
 	private:
+		GLenum m_texture_target;
 		GLint m_unpack_alignment = 0;
-		GLint m_texture_binding_2d = 0;
-		GLint m_texture_binding_2d_array = 0;
+		GLint m_texture = 0;
 	};
 
 	static auto set_unpack_alignment(GLenum format) noexcept -> void {
@@ -144,6 +156,9 @@ private:
 		glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY, options.max_anisotropy);
 		glTexParameteri(target, GL_TEXTURE_WRAP_S, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
 		glTexParameteri(target, GL_TEXTURE_WRAP_T, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+		if (target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_CUBE_MAP_ARRAY) {
+			glTexParameteri(target, GL_TEXTURE_WRAP_R, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+		}
 		if (options.use_mip_map) {
 			glGenerateMipmap(target);
 			glTexParameteri(target, GL_TEXTURE_MIN_FILTER, (options.use_linear_filtering) ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR);
@@ -173,7 +188,6 @@ private:
 	}()};
 	std::size_t m_width = 0;
 	std::size_t m_height = 0;
-	GLenum m_format = 0;
 };
 
 #endif
