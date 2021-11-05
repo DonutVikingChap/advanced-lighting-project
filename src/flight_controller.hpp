@@ -32,20 +32,6 @@ public:
 		SDL_SetRelativeMouseMode(SDL_FALSE);
 	}
 
-	auto toggle_controlling() noexcept -> void {
-		if (m_inputs.controlling) {
-			stop_controlling();
-		} else {
-			start_controlling();
-		}
-	}
-
-	auto set_controlling(bool controlling) noexcept -> void {
-		if (m_inputs.controlling != controlling) {
-			toggle_controlling();
-		}
-	}
-
 	auto handle_event(const SDL_Event& e, float mouse_sensitivity) -> void {
 		if (m_inputs.controlling) {
 			switch (e.type) {
