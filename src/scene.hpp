@@ -105,13 +105,22 @@ private:
 	};
 	std::vector<spot_light> m_spot_lights{};
 	std::vector<object> m_objects{
-		{m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"), glm::identity<mat4>()},
-		{m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),
-			glm::scale(glm::translate(glm::identity<mat4>(), vec3{8.0f, -1.0f, 0.0f}), vec3{0.5f})},
-		{m_asset_manager.load_textured_model("assets/models/alarm_clock_01_4k.obj", "assets/textures/"),
-			glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f})},
-		{m_asset_manager.load_textured_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
-			glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f})},
+		{
+			.model = m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"),
+			.transform = glm::identity<mat4>(),
+		},
+		{
+			.model = m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{8.0f, -1.0f, 0.0f}), vec3{0.5f}),
+		},
+		{
+			.model = m_asset_manager.load_textured_model("assets/models/alarm_clock_01_4k.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
+		},
+		{
+			.model = m_asset_manager.load_textured_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
+		},
 	};
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, -0.674740942224f};
 };

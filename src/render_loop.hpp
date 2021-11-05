@@ -6,7 +6,7 @@
 #include <GL/glew.h>    // GLEW_..., glew...
 #include <SDL.h>        // SDL_..., Uint32, Uint64
 #include <algorithm>    // std::min
-#include <cmath>        // std::round
+#include <cmath>        // std::ceil
 #include <fmt/format.h> // fmt::format
 #include <memory>       // std::unique_ptr
 #include <span>         // std::span
@@ -35,9 +35,9 @@ public:
 	render_loop(std::span<char*> arguments, const render_loop_options& options = {})
 		: m_clock_frequency(SDL_GetPerformanceFrequency())
 		, m_clock_interval(1.0f / static_cast<float>(m_clock_frequency))
-		, m_tick_interval(static_cast<Uint64>(std::round(static_cast<float>(m_clock_frequency) / options.tick_rate)))
+		, m_tick_interval(static_cast<Uint64>(std::ceil(static_cast<float>(m_clock_frequency) / options.tick_rate)))
 		, m_tick_delta_time(static_cast<float>(m_tick_interval) * m_clock_interval)
-		, m_min_frame_interval((options.max_fps == 0.0f) ? Uint64{0} : static_cast<Uint64>(std::round(static_cast<float>(m_clock_frequency) / options.max_fps)))
+		, m_min_frame_interval((options.max_fps == 0.0f) ? Uint64{0} : static_cast<Uint64>(std::ceil(static_cast<float>(m_clock_frequency) / options.max_fps)))
 		, m_max_ticks_per_frame((options.tick_rate <= options.min_fps) ? Uint64{1} : static_cast<Uint64>(options.tick_rate / options.min_fps)) {
 		(void)arguments; // TODO
 
@@ -91,7 +91,7 @@ public:
 	render_loop(const render_loop&) = delete;
 	render_loop(render_loop&&) = delete;
 	auto operator=(const render_loop&) -> render_loop& = delete;
-	auto operator=(render_loop &&) -> render_loop& = delete;
+	auto operator=(render_loop&&) -> render_loop& = delete;
 
 	auto run() -> void {
 		m_start_time = SDL_GetPerformanceCounter();
@@ -134,9 +134,9 @@ private:
 			SDL_Quit();
 		}
 		sdl(const sdl&) = delete;
-		sdl(sdl &&) = delete;
-		auto operator=(const sdl&)->sdl& = delete;
-		auto operator=(sdl &&)->sdl& = delete;
+		sdl(sdl&&) = delete;
+		auto operator=(const sdl&) -> sdl& = delete;
+		auto operator=(sdl&&) -> sdl& = delete;
 	};
 
 	struct sdl_initializer final {

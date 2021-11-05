@@ -7,6 +7,7 @@
 #include "scene.hpp"
 #include "viewport.hpp"
 
+#include <chrono>       // TODO: Remove
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
 #include <cstdlib>      // EXIT_SUCCESS, EXIT_FAILURE
@@ -16,6 +17,7 @@
 #include <memory>       // std::shared_ptr
 #include <span>         // std::span
 #include <stdexcept>    // std::exception
+#include <thread>       // TODO: Remove
 
 class application final : public render_loop {
 public:
@@ -26,7 +28,7 @@ public:
 		.window_resizable = true,
 		.tick_rate = 60,
 		.min_fps = 10,
-		.max_fps = 240,
+		.max_fps = 1200,
 		.v_sync = false,
 		.msaa_level = 0,
 	};
@@ -93,8 +95,26 @@ private:
 			ImGui::End();
 		}
 		m_scene.draw(m_renderer);
-		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, fmt::format("     FPS: {}", latest_measured_fps()));
-		m_renderer.text().draw_text(m_emoji_font, {2.0f, 27.0f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, u8"⏩");
+		{
+			auto fps_color = vec4{0.0f, 1.0f, 0.0f, 1.0f};
+			auto fps_icon = u8"✅";
+			const auto fps = latest_measured_fps();
+			if (fps < 60.0f) {
+				fps_color = {1.0f, 0.0f, 0.0f, 1.0f};
+				fps_icon = u8"❌";
+			} else if (fps < 120.0f) {
+				fps_color = {1.0f, 1.0f, 0.0f, 1.0f};
+				fps_icon = u8"⚠";
+			} else if (fps < 240.0f) {
+				fps_color = vec4{1.0f, 1.0f, 1.0f, 1.0f};
+				fps_icon = u8"▶";
+			} else if (fps < 1000.0f) {
+				fps_color = vec4{1.0f, 1.0f, 1.0f, 1.0f};
+				fps_icon = u8"⏩";
+			}
+			m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, fps_color, fmt::format("     FPS: {}", fps));
+			m_renderer.text().draw_text(m_emoji_font, {2.0f, 27.0f}, {1.0f, 1.0f}, fps_color, fps_icon);
+		}
 		m_renderer.render(framebuffer::get_default(), m_viewport, m_scene.view_matrix(), m_scene.view_position());
 	}
 
