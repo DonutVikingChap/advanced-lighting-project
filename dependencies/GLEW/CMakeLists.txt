@@ -1,11 +1,9 @@
 message(STATUS "Fetching GLEW...")
 
-FetchContent_Declare(
-    GLEW
+FetchContent_Declare(GLEW
     URL https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip
     URL_MD5 970535b75b1b69ebd018a0fa05af63d1 # 2.2.0
 )
-
 FetchContent_MakeAvailable(GLEW)
 
 add_library(GLEW "${glew_SOURCE_DIR}/src/glew.c")

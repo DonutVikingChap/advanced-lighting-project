@@ -12,7 +12,6 @@ FetchContent_Declare(SDL2
     GIT_REPOSITORY https://github.com/libsdl-org/SDL
     GIT_TAG 25f9ed87ff6947d9576fc9d79dee0784e638ac58 # 2.0.16
 )
-
 FetchContent_MakeAvailable(SDL2)
 
 add_library(dependency_SDL2 INTERFACE)

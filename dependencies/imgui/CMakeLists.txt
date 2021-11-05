@@ -1,11 +1,9 @@
 message(STATUS "Fetching imgui...")
 
-FetchContent_Declare(
-	imgui
+FetchContent_Declare(imgui
 	GIT_REPOSITORY https://github.com/ocornut/imgui
 	GIT_TAG 55d35d8387c15bf0cfd71861df67af8cfbda7456 # 1.85
 )
-
 FetchContent_MakeAvailable(imgui)
 
 add_library(imgui STATIC

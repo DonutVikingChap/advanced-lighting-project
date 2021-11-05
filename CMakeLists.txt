@@ -17,10 +17,11 @@ target_link_libraries(tsbk03 PRIVATE
 	dependency_assimp
 	dependency_fmt
 	dependency_FreeType
-	dependency_OpenGL
 	dependency_GLEW
 	dependency_glm
 	dependency_imgui
+	dependency_lightmapper
+	dependency_OpenGL
 	dependency_SDL2
 	dependency_stb)
 
