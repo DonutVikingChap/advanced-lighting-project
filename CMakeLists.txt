@@ -12,7 +12,7 @@ target_compile_features(tsbk03 PRIVATE cxx_std_20)
 target_compile_options(tsbk03 PRIVATE
 	$<$<CXX_COMPILER_ID:GNU>:   -Wall -Wextra   -Wpedantic      -Werror                 $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
 	$<$<CXX_COMPILER_ID:Clang>: -Wall -Wextra   -Wpedantic      -Werror                 $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
-	$<$<CXX_COMPILER_ID:MSVC>:  /W3             /permissive-    /WX     /wd4996    /utf-8    $<$<CONFIG:Debug>:/Od>  $<$<NOT:$<CONFIG:Debug>>:/Ot>>)
+	$<$<CXX_COMPILER_ID:MSVC>:  /W3             /permissive-    /WX     /wd4996 /utf-8  $<$<CONFIG:Debug>:/Od>  $<$<NOT:$<CONFIG:Debug>>:/Ot>>)
 target_link_libraries(tsbk03 PRIVATE
 	dependency_assimp
 	dependency_fmt

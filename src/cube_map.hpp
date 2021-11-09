@@ -11,13 +11,19 @@
 #include <cstddef> // std::size_t
 #include <memory>  // std::shared_ptr
 #include <span>    // std::span
+#include <tuple>   // std::tuple
 
 struct cube_map_vertex final {
 	vec3 position{};
 };
 
+inline constexpr auto cube_map_vertex_attributes = std::tuple{
+	&cube_map_vertex::position,
+};
+
 class cube_map_mesh final {
 public:
+	static constexpr auto primitive_type = GLenum{GL_TRIANGLES};
 	static constexpr auto vertices = std::array<cube_map_vertex, 36>{
 		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
 		cube_map_vertex{{-1.0f, -1.0f, -1.0f}},
@@ -67,7 +73,7 @@ public:
 	}
 
 private:
-	mesh<cube_map_vertex> m_mesh{GL_STATIC_DRAW, vertices, &cube_map_vertex::position};
+	mesh<cube_map_vertex> m_mesh{GL_STATIC_DRAW, vertices, cube_map_vertex_attributes};
 };
 
 class cube_map_texture final {

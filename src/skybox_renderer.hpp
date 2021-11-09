@@ -39,7 +39,7 @@ public:
 
 			glUniformMatrix3fv(m_skybox_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 
-			glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(cube_map_mesh::vertices.size()));
+			glDrawArrays(cube_map_mesh::primitive_type, 0, static_cast<GLsizei>(cube_map_mesh::vertices.size()));
 
 			glDepthFunc(GL_LESS);
 			m_skybox_texture.reset();

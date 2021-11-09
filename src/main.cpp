@@ -7,7 +7,6 @@
 #include "scene.hpp"
 #include "viewport.hpp"
 
-#include <chrono>       // TODO: Remove
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
 #include <cstdlib>      // EXIT_SUCCESS, EXIT_FAILURE
@@ -17,7 +16,6 @@
 #include <memory>       // std::shared_ptr
 #include <span>         // std::span
 #include <stdexcept>    // std::exception
-#include <thread>       // TODO: Remove
 
 class application final : public render_loop {
 public:
@@ -137,7 +135,7 @@ private:
 	}
 
 	asset_manager m_asset_manager{};
-	renderer m_renderer{m_asset_manager.load_cube_map_mesh(), m_asset_manager.load_quad_mesh(), get_window(), get_gl_context()};
+	renderer m_renderer{m_asset_manager.load_cube_map_mesh(), get_window(), get_gl_context()};
 	std::shared_ptr<font> m_main_font = m_asset_manager.load_font("assets/fonts/liberation/LiberationSans-Regular.ttf", 32u);
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
 	scene m_scene{m_asset_manager};

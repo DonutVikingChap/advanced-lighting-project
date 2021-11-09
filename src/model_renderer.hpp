@@ -189,7 +189,7 @@ public:
 					const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
 					glUniformMatrix4fv(m_model_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
 					glUniformMatrix3fv(m_model_shader.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
-					glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(mesh.index_count()), GL_UNSIGNED_INT, nullptr);
+					glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.index_count()), model_mesh::index_type, nullptr);
 				}
 			}
 		}

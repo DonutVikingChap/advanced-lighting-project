@@ -9,7 +9,6 @@
 #include "mesh.hpp"
 #include "model_renderer.hpp"
 #include "opengl.hpp"
-#include "quad.hpp"
 #include "skybox_renderer.hpp"
 #include "text_renderer.hpp"
 #include "texture.hpp"
@@ -24,9 +23,8 @@
 
 class renderer final {
 public:
-	renderer(std::shared_ptr<cube_map_mesh> cube_map_mesh, std::shared_ptr<quad_mesh> quad_mesh, SDL_Window* window, SDL_GLContext gl_context)
+	renderer(std::shared_ptr<cube_map_mesh> cube_map_mesh, SDL_Window* window, SDL_GLContext gl_context)
 		: m_skybox_renderer(std::move(cube_map_mesh))
-		, m_text_renderer(std::move(quad_mesh))
 		, m_gui_renderer(window, gl_context) {
 		glEnable(GL_CULL_FACE);
 
@@ -100,7 +98,7 @@ public:
 private:
 	model_renderer m_model_renderer{};
 	skybox_renderer m_skybox_renderer;
-	text_renderer m_text_renderer;
+	text_renderer m_text_renderer{};
 	gui_renderer m_gui_renderer;
 };
 

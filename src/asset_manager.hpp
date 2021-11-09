@@ -5,7 +5,6 @@
 #include "font.hpp"
 #include "image.hpp"
 #include "model.hpp"
-#include "quad.hpp"
 #include "texture.hpp"
 
 #include <algorithm>     // std::min
@@ -20,10 +19,6 @@
 
 class asset_manager final {
 public:
-	[[nodiscard]] auto load_quad_mesh() -> const std::shared_ptr<quad_mesh>& {
-		return m_quad_mesh;
-	}
-
 	[[nodiscard]] auto load_cube_map_mesh() -> const std::shared_ptr<cube_map_mesh>& {
 		return m_cube_map_mesh;
 	}
@@ -185,7 +180,6 @@ private:
 	using textured_model_cache = std::unordered_map<std::string, std::weak_ptr<textured_model>>;
 	using cube_map_texture_cache = std::unordered_map<std::string, std::weak_ptr<cube_map_texture>>;
 
-	std::shared_ptr<quad_mesh> m_quad_mesh = std::make_shared<quad_mesh>();
 	std::shared_ptr<cube_map_mesh> m_cube_map_mesh = std::make_shared<cube_map_mesh>();
 	font_library m_font_library{};
 	font_cache m_fonts{};

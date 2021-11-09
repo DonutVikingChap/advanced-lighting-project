@@ -31,7 +31,6 @@ public:
 	}
 
 	auto update(float elapsed_time, float delta_time) -> void {
-		// TODO
 		(void)elapsed_time;
 		m_controller.update(delta_time, move_acceleration, move_drag, yaw_speed, pitch_speed);
 	}

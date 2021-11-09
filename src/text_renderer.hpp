@@ -3,9 +3,9 @@
 
 #include "font.hpp"
 #include "glsl.hpp"
+#include "glyph.hpp"
 #include "opengl.hpp"
 #include "passkey.hpp"
-#include "quad.hpp"
 #include "shader.hpp"
 #include "utf8.hpp"
 #include "viewport.hpp"
@@ -18,14 +18,12 @@
 #include <string_view>          // std::string_view
 #include <unordered_map>        // std::unordered_map
 #include <utility>              // std::move
+#include <vector>               // std::vector
 
 class renderer;
 
 class text_renderer final {
 public:
-	explicit text_renderer(std::shared_ptr<quad_mesh> quad_mesh)
-		: m_quad_mesh(std::move(quad_mesh)) {}
-
 	auto resize(passkey<renderer>, int width, int height) -> void {
 		m_glyph_shader.resize(width, height);
 	}
@@ -44,15 +42,19 @@ public:
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		glUseProgram(m_glyph_shader.program.get());
-		glBindVertexArray(m_quad_mesh->get());
+		glBindVertexArray(m_glyph_mesh.get());
+		glBindBuffer(GL_ARRAY_BUFFER, m_glyph_mesh.instance_buffer());
 
 		glActiveTexture(GL_TEXTURE0);
 
 		for (const auto& [font, texts] : m_text_instances) {
 			glBindTexture(GL_TEXTURE_2D, font->atlas().get());
+			m_glyph_instances.clear();
 			for (const auto& text : texts) {
-				render_text(*font, text, viewport);
+				add_glyph_instances(*font, text, viewport);
 			}
+			glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_glyph_instances.size() * sizeof(glyph_instance)), m_glyph_instances.data(), GL_DYNAMIC_DRAW);
+			glDrawArraysInstanced(glyph_mesh::primitive_type, 0, static_cast<GLsizei>(glyph_mesh::vertices.size()), static_cast<GLsizei>(m_glyph_instances.size()));
 		}
 		m_text_instances.clear();
 
@@ -84,12 +86,7 @@ private:
 			.fragment_shader_filename = "assets/shaders/glyph.frag",
 		}};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
-		shader_uniform offset{program.get(), "offset"};
-		shader_uniform scale{program.get(), "scale"};
-		shader_uniform texture_offset{program.get(), "texture_offset"};
-		shader_uniform texture_scale{program.get(), "texture_scale"};
 		shader_uniform text_texture{program.get(), "text_texture"};
-		shader_uniform text_color{program.get(), "text_color"};
 	};
 
 	struct text_instance final {
@@ -105,8 +102,7 @@ private:
 		std::u8string str;
 	};
 
-	auto render_text(font& font, const text_instance& text, const viewport& viewport) const -> void {
-		glUniform4fv(m_glyph_shader.text_color.location(), 1, glm::value_ptr(text.color));
+	auto add_glyph_instances(font& font, const text_instance& text, const viewport& viewport) -> void {
 		auto x = text.offset.x;
 		auto y = text.offset.y;
 		const auto top = static_cast<float>(viewport.h);
@@ -125,11 +121,7 @@ private:
 					std::floor(x) + std::round(glyph.bearing.x * text.scale.x),
 					top - std::floor(y) + std::round(glyph.bearing.y * text.scale.y) - glyph_scale.y,
 				};
-				glUniform2fv(m_glyph_shader.offset.location(), 1, glm::value_ptr(glyph_offset));
-				glUniform2fv(m_glyph_shader.scale.location(), 1, glm::value_ptr(glyph_scale));
-				glUniform2fv(m_glyph_shader.texture_offset.location(), 1, glm::value_ptr(glyph.texture_offset));
-				glUniform2fv(m_glyph_shader.texture_scale.location(), 1, glm::value_ptr(glyph.texture_scale));
-				glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(quad_mesh::vertices.size()));
+				m_glyph_instances.emplace_back(glyph_offset, glyph_scale, glyph.texture_offset, glyph.texture_scale, text.color);
 				x += (glyph.advance + font.kerning(ch, (it == code_points.end()) ? 0 : *it)) * text.scale.x;
 			}
 		}
@@ -137,9 +129,10 @@ private:
 
 	using text_instance_map = std::unordered_map<std::shared_ptr<font>, std::vector<text_instance>>;
 
-	std::shared_ptr<quad_mesh> m_quad_mesh;
+	glyph_mesh m_glyph_mesh{};
 	glyph_shader m_glyph_shader{};
 	text_instance_map m_text_instances{};
+	std::vector<glyph_instance> m_glyph_instances{};
 };
 
 #endif
