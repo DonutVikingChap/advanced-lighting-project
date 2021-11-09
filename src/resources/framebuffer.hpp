@@ -1,8 +1,8 @@
 #ifndef FRAMEBUFFER_HPP
 #define FRAMEBUFFER_HPP
 
-#include "handle.hpp"
-#include "opengl.hpp"
+#include "../core/handle.hpp"
+#include "../core/opengl.hpp"
 
 class framebuffer final {
 public:

@@ -1,7 +1,6 @@
 #ifndef UTF8_HPP
 #define UTF8_HPP
 
-#include <cassert>     // assert
 #include <cstddef>     // std::ptrdiff_t
 #include <iterator>    // std::forward_iterator_tag
 #include <memory>      // std::addressof

@@ -1,9 +1,9 @@
 #ifndef TEXTURE_HPP
 #define TEXTURE_HPP
 
-#include "handle.hpp"
+#include "../core/handle.hpp"
+#include "../core/opengl.hpp"
 #include "image.hpp"
-#include "opengl.hpp"
 
 #include <cstddef>      // std::byte, std::size_t
 #include <fmt/format.h> // fmt::format
@@ -25,6 +25,17 @@ public:
 			case 2: return GL_RG;
 			case 3: return GL_RGB;
 			case 4: return GL_RGBA;
+			default: break;
+		}
+		throw std::invalid_argument{fmt::format("Invalid texture pixel size \"{}\"!", pixel_size)};
+	}
+
+	[[nodiscard]] static auto internal_pixel_format(std::size_t pixel_size) -> GLint {
+		switch (pixel_size) {
+			case 1: return GL_R8;
+			case 2: return GL_RG8;
+			case 3: return GL_RGB8;
+			case 4: return GL_RGBA8;
 			default: break;
 		}
 		throw std::invalid_argument{fmt::format("Invalid texture pixel size \"{}\"!", pixel_size)};
@@ -60,12 +71,12 @@ public:
 	texture(GLint internal_format, const image_view& image, const texture_options& options = {})
 		: texture(internal_format, image.data(), image.width(), image.height(), pixel_format(image.pixel_size()), options) {}
 
-	texture(GLint internal_format, std::span<const image_view, 6> cube_map_images, const texture_options& options = {.repeat = false}) {
+	texture(GLint internal_format, std::span<const image_view, 6> cubemap_images, const texture_options& options = {.repeat = false}) {
 		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
 
 		glBindTexture(GL_TEXTURE_CUBE_MAP, m_texture.get());
-		for (auto i = std::size_t{0}; i < cube_map_images.size(); ++i) {
-			const auto& image = cube_map_images[i];
+		for (auto i = std::size_t{0}; i < cubemap_images.size(); ++i) {
+			const auto& image = cubemap_images[i];
 			const auto format = pixel_format(image.pixel_size());
 			set_unpack_alignment(format);
 			glTexImage2D(static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), 0, internal_format, image.width(), image.height(), 0, format, GL_UNSIGNED_BYTE, image.data());
@@ -140,7 +151,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		auto operator=(state_preserver &&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;

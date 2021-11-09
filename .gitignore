@@ -4,3 +4,4 @@ build*/
 cmake-build*/
 .idea/
 imgui.ini
+assets/test/

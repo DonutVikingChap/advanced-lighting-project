@@ -1,9 +1,9 @@
 #ifndef MESH_HPP
 #define MESH_HPP
 
-#include "glsl.hpp"
-#include "handle.hpp"
-#include "opengl.hpp"
+#include "../core/glsl.hpp"
+#include "../core/handle.hpp"
+#include "../core/opengl.hpp"
 
 #include <cstddef>     // std::byte, std::size_t
 #include <cstdint>     // std::uintptr_t

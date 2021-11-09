@@ -1,9 +1,9 @@
 #ifndef GLYPH_HPP
 #define GLYPH_HPP
 
-#include "glsl.hpp"
+#include "../core/glsl.hpp"
+#include "../core/opengl.hpp"
 #include "mesh.hpp"
-#include "opengl.hpp"
 
 #include <array>   // std::array
 #include <cstddef> // std::size_t

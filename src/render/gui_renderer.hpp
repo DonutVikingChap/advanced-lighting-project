@@ -1,8 +1,8 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include "opengl.hpp"
-#include "passkey.hpp"
+#include "../core/opengl.hpp"
+#include "../utilities/passkey.hpp"
 
 #include <SDL.h>                // SDL_...
 #include <imgui.h>              // ImGui
@@ -10,7 +10,7 @@
 #include <imgui_impl_sdl.h>     // ImGui_ImplSDL2_...
 #include <memory>               // std::unique_ptr
 
-class renderer;
+class rendering_pipeline;
 
 class gui_renderer final {
 public:
@@ -24,19 +24,19 @@ public:
 		ImGui::StyleColorsDark();
 	}
 
-	auto handle_event(passkey<renderer>, const SDL_Event& e) -> void {
+	auto handle_event(passkey<rendering_pipeline>, const SDL_Event& e) -> void {
 		ImGui::SetCurrentContext(m_context.get());
 		ImGui_ImplSDL2_ProcessEvent(&e);
 	}
 
-	auto update(passkey<renderer>) -> void {
+	auto update(passkey<rendering_pipeline>) -> void {
 		ImGui::SetCurrentContext(m_context.get());
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(m_window);
 		ImGui::NewFrame();
 	}
 
-	auto render(passkey<renderer>) -> void {
+	auto render(passkey<rendering_pipeline>) -> void {
 		ImGui::SetCurrentContext(m_context.get());
 		if (enabled()) {
 			ImGui::Render();

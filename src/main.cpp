@@ -1,11 +1,11 @@
-#include "asset_manager.hpp"
-#include "font.hpp"
-#include "framebuffer.hpp"
-#include "glsl.hpp"
-#include "render_loop.hpp"
-#include "renderer.hpp"
-#include "scene.hpp"
-#include "viewport.hpp"
+#include "application/asset_manager.hpp"
+#include "application/render_loop.hpp"
+#include "application/scene.hpp"
+#include "core/glsl.hpp"
+#include "render/rendering_pipeline.hpp"
+#include "resources/font.hpp"
+#include "resources/framebuffer.hpp"
+#include "resources/viewport.hpp"
 
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
@@ -135,7 +135,7 @@ private:
 	}
 
 	asset_manager m_asset_manager{};
-	renderer m_renderer{m_asset_manager.load_cube_map_mesh(), get_window(), get_gl_context()};
+	rendering_pipeline m_renderer{get_window(), get_gl_context()};
 	std::shared_ptr<font> m_main_font = m_asset_manager.load_font("assets/fonts/liberation/LiberationSans-Regular.ttf", 32u);
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
 	scene m_scene{m_asset_manager};

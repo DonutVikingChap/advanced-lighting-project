@@ -1,12 +1,12 @@
 #ifndef MODEL_RENDERER_HPP
 #define MODEL_RENDERER_HPP
 
-#include "glsl.hpp"
-#include "light.hpp"
-#include "model.hpp"
-#include "opengl.hpp"
-#include "passkey.hpp"
-#include "shader.hpp"
+#include "../core/glsl.hpp"
+#include "../core/opengl.hpp"
+#include "../resources/light.hpp"
+#include "../resources/model.hpp"
+#include "../resources/shader.hpp"
+#include "../utilities/passkey.hpp"
 
 #include <array>                      // std::array
 #include <cstddef>                    // std::size_t
@@ -19,7 +19,7 @@
 #include <utility>                    // std::move
 #include <vector>                     // std::vector
 
-class renderer;
+class rendering_pipeline;
 
 class model_renderer final {
 public:
@@ -33,7 +33,7 @@ public:
 	static constexpr auto spot_light_texture_units_begin = GLint{point_light_texture_units_begin + point_light_count};
 	static constexpr auto reserved_texture_units_end = GLint{spot_light_texture_units_begin + spot_light_count};
 
-	auto resize(passkey<renderer>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
+	auto resize(passkey<rendering_pipeline>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
 		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
 	}
 
@@ -53,7 +53,7 @@ public:
 		m_model_instances[std::move(model)].emplace_back(transform);
 	}
 
-	auto render(passkey<renderer>, const mat4& view_matrix, vec3 view_position) -> void {
+	auto render(passkey<rendering_pipeline>, const mat4& view_matrix, vec3 view_position) -> void {
 		glUseProgram(m_model_shader.program.get());
 		glUniformMatrix4fv(m_model_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 		glUniform3fv(m_model_shader.view_position.location(), 1, glm::value_ptr(view_position));

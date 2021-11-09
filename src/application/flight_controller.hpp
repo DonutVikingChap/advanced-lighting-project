@@ -1,7 +1,7 @@
 #ifndef FLIGHT_CONTROLLER_HPP
 #define FLIGHT_CONTROLLER_HPP
 
-#include "glsl.hpp"
+#include "../core/glsl.hpp"
 
 #include <SDL.h>       // SDL_...
 #include <algorithm>   // std::clamp

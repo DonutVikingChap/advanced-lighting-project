@@ -1,18 +1,17 @@
-#ifndef RENDERER_HPP
-#define RENDERER_HPP
+#ifndef RENDERING_PIPELINE_HPP
+#define RENDERING_PIPELINE_HPP
 
-#include "cube_map.hpp"
-#include "font.hpp"
-#include "framebuffer.hpp"
-#include "glsl.hpp"
+#include "../core/glsl.hpp"
+#include "../core/opengl.hpp"
+#include "../resources/font.hpp"
+#include "../resources/framebuffer.hpp"
+#include "../resources/mesh.hpp"
+#include "../resources/texture.hpp"
+#include "../resources/viewport.hpp"
 #include "gui_renderer.hpp"
-#include "mesh.hpp"
 #include "model_renderer.hpp"
-#include "opengl.hpp"
 #include "skybox_renderer.hpp"
 #include "text_renderer.hpp"
-#include "texture.hpp"
-#include "viewport.hpp"
 
 #include <SDL.h>       // SDL_...
 #include <memory>      // std::shared_ptr
@@ -21,11 +20,10 @@
 #include <utility>     // std::move
 #include <vector>      // std::vector
 
-class renderer final {
+class rendering_pipeline final {
 public:
-	renderer(std::shared_ptr<cube_map_mesh> cube_map_mesh, SDL_Window* window, SDL_GLContext gl_context)
-		: m_skybox_renderer(std::move(cube_map_mesh))
-		, m_gui_renderer(window, gl_context) {
+	rendering_pipeline(SDL_Window* window, SDL_GLContext gl_context)
+		: m_gui_renderer(window, gl_context) {
 		glEnable(GL_CULL_FACE);
 
 		glEnable(GL_BLEND);
@@ -97,7 +95,7 @@ public:
 
 private:
 	model_renderer m_model_renderer{};
-	skybox_renderer m_skybox_renderer;
+	skybox_renderer m_skybox_renderer{};
 	text_renderer m_text_renderer{};
 	gui_renderer m_gui_renderer;
 };

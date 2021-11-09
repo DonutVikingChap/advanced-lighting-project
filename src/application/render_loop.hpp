@@ -1,7 +1,7 @@
 #ifndef RENDER_LOOP_HPP
 #define RENDER_LOOP_HPP
 
-#include "opengl.hpp"
+#include "../core/opengl.hpp"
 
 #include <GL/glew.h>    // GLEW_..., glew...
 #include <SDL.h>        // SDL_..., Uint32, Uint64
@@ -91,7 +91,7 @@ public:
 	render_loop(const render_loop&) = delete;
 	render_loop(render_loop&&) = delete;
 	auto operator=(const render_loop&) -> render_loop& = delete;
-	auto operator=(render_loop&&) -> render_loop& = delete;
+	auto operator=(render_loop &&) -> render_loop& = delete;
 
 	auto run() -> void {
 		m_start_time = SDL_GetPerformanceCounter();
@@ -136,7 +136,7 @@ private:
 		sdl(const sdl&) = delete;
 		sdl(sdl&&) = delete;
 		auto operator=(const sdl&) -> sdl& = delete;
-		auto operator=(sdl&&) -> sdl& = delete;
+		auto operator=(sdl &&) -> sdl& = delete;
 	};
 
 	struct sdl_initializer final {

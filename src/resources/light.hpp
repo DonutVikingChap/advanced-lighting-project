@@ -1,7 +1,7 @@
 #ifndef LIGHT_HPP
 #define LIGHT_HPP
 
-#include "opengl.hpp"
+#include "../core/opengl.hpp"
 #include "shader.hpp"
 #include "texture.hpp"
 

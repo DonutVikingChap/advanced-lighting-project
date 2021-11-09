@@ -1,8 +1,8 @@
 #ifndef SHADER_HPP
 #define SHADER_HPP
 
-#include "handle.hpp"
-#include "opengl.hpp"
+#include "../core/handle.hpp"
+#include "../core/opengl.hpp"
 
 #include <array>            // std::array
 #include <cstddef>          // std::size_t

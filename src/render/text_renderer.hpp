@@ -1,14 +1,14 @@
 #ifndef TEXT_RENDERER_HPP
 #define TEXT_RENDERER_HPP
 
-#include "font.hpp"
-#include "glsl.hpp"
-#include "glyph.hpp"
-#include "opengl.hpp"
-#include "passkey.hpp"
-#include "shader.hpp"
-#include "utf8.hpp"
-#include "viewport.hpp"
+#include "../core/glsl.hpp"
+#include "../core/opengl.hpp"
+#include "../resources/font.hpp"
+#include "../resources/glyph.hpp"
+#include "../resources/shader.hpp"
+#include "../resources/viewport.hpp"
+#include "../utilities/passkey.hpp"
+#include "../utilities/utf8.hpp"
 
 #include <cmath>                // std::round, std::floor
 #include <glm/glm.hpp>          // glm::ortho
@@ -20,11 +20,11 @@
 #include <utility>              // std::move
 #include <vector>               // std::vector
 
-class renderer;
+class rendering_pipeline;
 
 class text_renderer final {
 public:
-	auto resize(passkey<renderer>, int width, int height) -> void {
+	auto resize(passkey<rendering_pipeline>, int width, int height) -> void {
 		m_glyph_shader.resize(width, height);
 	}
 
@@ -36,7 +36,7 @@ public:
 		m_text_instances[std::move(font)].emplace_back(offset, scale, color, std::u8string{str.begin(), str.end()});
 	}
 
-	auto render(passkey<renderer>, const viewport& viewport) -> void {
+	auto render(passkey<rendering_pipeline>, const viewport& viewport) -> void {
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

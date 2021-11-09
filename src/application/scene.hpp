@@ -1,13 +1,13 @@
 #ifndef SCENE_HPP
 #define SCENE_HPP
 
+#include "../core/glsl.hpp"
+#include "../render/rendering_pipeline.hpp"
+#include "../resources/cubemap.hpp"
+#include "../resources/light.hpp"
+#include "../resources/model.hpp"
 #include "asset_manager.hpp"
-#include "cube_map.hpp"
 #include "flight_controller.hpp"
-#include "glsl.hpp"
-#include "light.hpp"
-#include "model.hpp"
-#include "renderer.hpp"
 
 #include <SDL.h>                // SDL_...
 #include <glm/glm.hpp>          // glm::identity, glm::lookAt, glm::translate, glm::scale
@@ -35,7 +35,7 @@ public:
 		m_controller.update(delta_time, move_acceleration, move_drag, yaw_speed, pitch_speed);
 	}
 
-	auto draw(renderer& renderer) -> void {
+	auto draw(rendering_pipeline& renderer) -> void {
 		renderer.skybox().draw_skybox(m_skybox);
 		if (renderer.gui().enabled() && !m_point_lights.empty()) {
 			ImGui::Begin("Light");
@@ -90,7 +90,7 @@ private:
 	static constexpr auto pitch_speed = 3.49066f;
 
 	asset_manager& m_asset_manager;
-	std::shared_ptr<cube_map_texture> m_skybox = m_asset_manager.load_cube_map_texture("assets/textures/studio_country_hall/", ".hdr");
+	std::shared_ptr<cubemap> m_skybox = m_asset_manager.load_cubemap("assets/textures/studio_country_hall/", ".hdr");
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{
 		{

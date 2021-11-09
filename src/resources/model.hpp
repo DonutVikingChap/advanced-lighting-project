@@ -1,9 +1,9 @@
 #ifndef MODEL_HPP
 #define MODEL_HPP
 
-#include "glsl.hpp"
+#include "../core/glsl.hpp"
+#include "../core/opengl.hpp"
 #include "mesh.hpp"
-#include "opengl.hpp"
 #include "texture.hpp"
 
 #include <algorithm>            // std::ranges::find
