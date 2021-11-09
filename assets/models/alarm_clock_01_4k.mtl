@@ -11,9 +11,9 @@ Ni 1.450000
 d 1.000000
 illum 2
 map_Kd alarm_clock_01_diff_4k.jpg
-map_Kn alarm_clock_01_nor_gl_4k.hdr
-map_Ks alarm_clock_01_rough_4k.hdr
-map_Ns alarm_clock_01_metal_4k.hdr
+map_Kn alarm_clock_01_nor_gl_4k.png
+map_Ks alarm_clock_01_rough_4k.png
+map_Ns alarm_clock_01_metal_4k.png
 
 newmtl alarm_clock_01_glass
 Ns 225.000000
@@ -24,5 +24,5 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 0.300000
 illum 9
-map_Kn alarm_clock_01_nor_gl_4k.hdr
-map_Ks alarm_clock_01_rough_4k.hdr
+map_Kn alarm_clock_01_nor_gl_4k.png
+map_Ks alarm_clock_01_rough_4k.png

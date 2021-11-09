@@ -11,6 +11,6 @@ Ni 1.450000
 d 1.000000
 illum 2
 map_Kd brass_vase_01_diff_1k.jpg
-map_Kn brass_vase_01_nor_gl_1k.hdr
+map_Kn brass_vase_01_nor_gl_1k.png
 map_Ks brass_vase_01_rough_1k.jpg
-map_Ns brass_vase_01_metal_1k.hdr
+map_Ns brass_vase_01_metal_1k.png
