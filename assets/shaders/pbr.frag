@@ -40,7 +40,7 @@ uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
 float normal_tr_ggx(float d, float a) {
 	float a_sq = a * a;
 	float denominator_root = (d * d * (a_sq - 1.0) + 1.0);
-	return a_s / (PI * denominator_root * denominator_root);
+	return a_sq / (PI * denominator_root * denominator_root);
 }
 
 float geometry_schlick_ggx(float d, float k) {
