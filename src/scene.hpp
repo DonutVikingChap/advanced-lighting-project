@@ -122,7 +122,7 @@ private:
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
 		},
 	};
-	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, -0.674740942224f};
+	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, 0.0f};
 };
 
 #endif
