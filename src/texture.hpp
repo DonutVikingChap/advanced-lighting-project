@@ -124,9 +124,9 @@ public:
 	}
 
 private:
-	class [[nodiscard]] state_preserver final {
+	class state_preserver final {
 	public:
-		state_preserver(GLenum texture_target, GLenum texture_target_binding) noexcept
+		[[nodiscard]] state_preserver(GLenum texture_target, GLenum texture_target_binding) noexcept
 			: m_texture_target(texture_target) {
 			glGetIntegerv(GL_UNPACK_ALIGNMENT, &m_unpack_alignment);
 			glGetIntegerv(texture_target_binding, &m_texture);
@@ -138,9 +138,9 @@ private:
 		}
 
 		state_preserver(const state_preserver&) = delete;
-		state_preserver(state_preserver &&) = delete;
-		auto operator=(const state_preserver&)->state_preserver& = delete;
-		auto operator=(state_preserver &&)->state_preserver& = delete;
+		state_preserver(state_preserver&&) = delete;
+		auto operator=(const state_preserver&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;

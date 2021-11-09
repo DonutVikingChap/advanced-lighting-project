@@ -129,7 +129,7 @@ private:
 				glUniform2fv(m_glyph_shader.scale.location(), 1, glm::value_ptr(glyph_scale));
 				glUniform2fv(m_glyph_shader.texture_offset.location(), 1, glm::value_ptr(glyph.texture_offset));
 				glUniform2fv(m_glyph_shader.texture_scale.location(), 1, glm::value_ptr(glyph.texture_scale));
-				glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(quad_mesh::vertex_count));
+				glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(quad_mesh::vertices.size()));
 				x += (glyph.advance + font.kerning(ch, (it == code_points.end()) ? 0 : *it)) * text.scale.x;
 			}
 		}

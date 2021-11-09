@@ -26,8 +26,8 @@ void main() {
 	vec4 fragment_in_view_space = view_matrix * vec4(io_fragment_position, 1.0);
 	io_fragment_depth = fragment_in_view_space.z;
 	io_normal = normal_matrix * in_normal;
-    io_tangent = normal_matrix * in_tangent;
-    io_bitangent = normal_matrix * in_bitangent;
+	io_tangent = normal_matrix * in_tangent;
+	io_bitangent = normal_matrix * in_bitangent;
 	io_texture_coordinates = in_texture_coordinates;
 	for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
 		for (int cascade_level = 0; cascade_level < CSM_CASCADE_COUNT; ++cascade_level) {

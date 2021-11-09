@@ -1,8 +1,8 @@
 message(STATUS "Fetching GLEW...")
 
 FetchContent_Declare(GLEW
-    URL https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip
-    URL_MD5 970535b75b1b69ebd018a0fa05af63d1 # 2.2.0
+	URL https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip
+	URL_MD5 970535b75b1b69ebd018a0fa05af63d1 # 2.2.0
 )
 FetchContent_MakeAvailable(GLEW)
 
@@ -11,9 +11,9 @@ target_include_directories(GLEW PUBLIC "${glew_SOURCE_DIR}/include")
 target_link_libraries(GLEW PUBLIC dependency_OpenGL)
 
 if(BUILD_SHARED_LIBS)
-    target_compile_definitions(GLEW PRIVATE GLEW_BUILD)
+	target_compile_definitions(GLEW PRIVATE GLEW_BUILD)
 else()
-    target_compile_definitions(GLEW PUBLIC GLEW_STATIC)
+	target_compile_definitions(GLEW PUBLIC GLEW_STATIC)
 endif()
 
 add_library(dependency_GLEW INTERFACE)

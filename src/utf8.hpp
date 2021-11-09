@@ -57,67 +57,65 @@ public:
 
 private:
 	constexpr auto next_code_point() noexcept -> char32_t {
-		// clang-format off
-        if (m_next == m_end) {
-            [[unlikely]] return utf8_error; // Reached end.
-        }
-        auto result = char32_t{};
-        const auto c0 = *m_next++;
+		if (m_next == m_end) {
+			[[unlikely]] return utf8_error; // Reached end.
+		}
+		auto result = char32_t{};
+		const auto c0 = *m_next++;
 		if ((c0 & 0b10000000) == 0) { // 0-127
-            [[likely]] result = c0; // Valid ASCII.
-        } else if ((c0 & 0b11100000) == 0b11000000) { // 128-2047
-            if (m_end - m_next < 1) {
-                m_next = m_end;
-                [[unlikely]] return utf8_error; // Missing continuation.
-            }
-            const auto c1 = *m_next++;
-            if ((c1 & 0b11000000) != 0b10000000) {
-                [[unlikely]] return utf8_error; // Invalid continuation.
-            }
-            result = ((c0 & 0b11111)) << 6 | (c1 & 0b111111);
-            if (result < 128) {
-                [[unlikely]] return utf8_error; // Overlong sequence.
-            }
-        } else if ((c0 & 0b11110000) == 0b11100000) { // 2048-65535
-            if (m_end - m_next < 2) {
-                m_next = m_end;
-                [[unlikely]] return utf8_error; // Missing continuation.
-            }
-            const auto c1 = *m_next++;
-            const auto c2 = *m_next++;
-            if ((c1 & 0b11000000) != 0b10000000 || (c2 & 0b11000000) != 0b10000000) {
-                [[unlikely]] return utf8_error; // Invalid continuation.
-            }
-            result = ((c0 & 0b1111) << 12) | ((c1 & 0b111111) << 6) | (c2 & 0b111111);
-            if (result < 2048) {
-                [[unlikely]] return utf8_error; // Overlong sequence.
-            }
-            if (result >= 0xD800 && result <= 0xDFFF) {
-                [[unlikely]] return utf8_error; // Surrogate code point.
-            }
-        } else if ((c0 & 0b11111000) == 0b11110000) { // 65536-1114111
-            if (m_end - m_next < 3) {
-                m_next = m_end;
-                [[unlikely]] return utf8_error; // Missing continuation.
-            }
-            const auto c1 = *m_next++;
-            const auto c2 = *m_next++;
-            const auto c3 = *m_next++;
-            if ((c1 & 0b11000000) != 0b10000000 || (c2 & 0b11000000) != 0b10000000 || (c3 & 0b11000000) != 0b10000000) {
-                [[unlikely]] return utf8_error; // Invalid continuation.
-            }
-            result = ((c0 & 0b111) << 18) | ((c1 & 0b111111) << 12) | ((c2 & 0b111111) << 6) | (c3 & 0b111111);
-            if (result < 65536) {
-                [[unlikely]] return utf8_error; // Overlong sequence.
-            }
-            if (result > 1114111) {
-                [[unlikely]] return utf8_error; // Invalid code point.
-            }
-        } else {
-            [[unlikely]] return utf8_error; // Invalid byte.
-        }
-        return result;
-		// clang-format on
+			[[likely]] result = c0;
+		} else if ((c0 & 0b11100000) == 0b11000000) { // 128-2047
+			if (m_end - m_next < 1) {
+				m_next = m_end;
+				[[unlikely]] return utf8_error; // Missing continuation.
+			}
+			const auto c1 = *m_next++;
+			if ((c1 & 0b11000000) != 0b10000000) {
+				[[unlikely]] return utf8_error; // Invalid continuation.
+			}
+			result = ((c0 & 0b11111)) << 6 | (c1 & 0b111111);
+			if (result < 128) {
+				[[unlikely]] return utf8_error; // Overlong sequence.
+			}
+		} else if ((c0 & 0b11110000) == 0b11100000) { // 2048-65535
+			if (m_end - m_next < 2) {
+				m_next = m_end;
+				[[unlikely]] return utf8_error; // Missing continuation.
+			}
+			const auto c1 = *m_next++;
+			const auto c2 = *m_next++;
+			if ((c1 & 0b11000000) != 0b10000000 || (c2 & 0b11000000) != 0b10000000) {
+				[[unlikely]] return utf8_error; // Invalid continuation.
+			}
+			result = ((c0 & 0b1111) << 12) | ((c1 & 0b111111) << 6) | (c2 & 0b111111);
+			if (result < 2048) {
+				[[unlikely]] return utf8_error; // Overlong sequence.
+			}
+			if (result >= 0xD800 && result <= 0xDFFF) {
+				[[unlikely]] return utf8_error; // Surrogate code point.
+			}
+		} else if ((c0 & 0b11111000) == 0b11110000) { // 65536-1114111
+			if (m_end - m_next < 3) {
+				m_next = m_end;
+				[[unlikely]] return utf8_error; // Missing continuation.
+			}
+			const auto c1 = *m_next++;
+			const auto c2 = *m_next++;
+			const auto c3 = *m_next++;
+			if ((c1 & 0b11000000) != 0b10000000 || (c2 & 0b11000000) != 0b10000000 || (c3 & 0b11000000) != 0b10000000) {
+				[[unlikely]] return utf8_error; // Invalid continuation.
+			}
+			result = ((c0 & 0b111) << 18) | ((c1 & 0b111111) << 12) | ((c2 & 0b111111) << 6) | (c3 & 0b111111);
+			if (result < 65536) {
+				[[unlikely]] return utf8_error; // Overlong sequence.
+			}
+			if (result > 1114111) {
+				[[unlikely]] return utf8_error; // Invalid code point.
+			}
+		} else {
+			[[unlikely]] return utf8_error; // Invalid byte.
+		}
+		return result;
 	}
 
 	const char8_t* m_it = nullptr;

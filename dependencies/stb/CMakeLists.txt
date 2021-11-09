@@ -1,9 +1,9 @@
 message(STATUS "Fetching stb...")
 
 FetchContent_Declare(
-    stb
-    GIT_REPOSITORY https://github.com/nothings/stb
-    GIT_TAG af1a5bc352164740c1cc1354942b1c6b72eacb8a # 1
+	stb
+	GIT_REPOSITORY https://github.com/nothings/stb
+	GIT_TAG af1a5bc352164740c1cc1354942b1c6b72eacb8a # 1
 )
 
 FetchContent_MakeAvailable(stb)

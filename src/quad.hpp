@@ -15,24 +15,21 @@ struct quad_vertex final {
 
 class quad_mesh final {
 public:
-	static constexpr auto vertex_count = std::size_t{6};
+	static constexpr auto vertices = std::array<quad_vertex, 6>{
+		quad_vertex{{0.0f, 1.0f}, {0.0f, 0.0f}},
+		quad_vertex{{0.0f, 0.0f}, {0.0f, 1.0f}},
+		quad_vertex{{1.0f, 0.0f}, {1.0f, 1.0f}},
+		quad_vertex{{0.0f, 1.0f}, {0.0f, 0.0f}},
+		quad_vertex{{1.0f, 0.0f}, {1.0f, 1.0f}},
+		quad_vertex{{1.0f, 1.0f}, {1.0f, 0.0f}},
+	};
 
 	[[nodiscard]] auto get() const noexcept -> GLuint {
 		return m_mesh.get();
 	}
 
 private:
-	mesh<quad_vertex> m_mesh{GL_STATIC_DRAW,
-		std::array<quad_vertex, vertex_count>{
-			quad_vertex{vec2{0.0f, 1.0f}, vec2{0.0f, 0.0f}},
-			quad_vertex{vec2{0.0f, 0.0f}, vec2{0.0f, 1.0f}},
-			quad_vertex{vec2{1.0f, 0.0f}, vec2{1.0f, 1.0f}},
-			quad_vertex{vec2{0.0f, 1.0f}, vec2{0.0f, 0.0f}},
-			quad_vertex{vec2{1.0f, 0.0f}, vec2{1.0f, 1.0f}},
-			quad_vertex{vec2{1.0f, 1.0f}, vec2{1.0f, 0.0f}},
-		},
-		&quad_vertex::position,
-		&quad_vertex::texture_coordinates};
+	mesh<quad_vertex> m_mesh{GL_STATIC_DRAW, vertices, &quad_vertex::position, &quad_vertex::texture_coordinates};
 };
 
 #endif

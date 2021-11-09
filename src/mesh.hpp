@@ -62,6 +62,7 @@ private:
 
 struct no_index final {};
 
+// TODO: Support instancing.
 template <typename Vertex, typename Index = no_index>
 class mesh final {
 public:
@@ -87,9 +88,9 @@ public:
 	}
 
 private:
-	class [[nodiscard]] state_preserver final {
+	class state_preserver final {
 	public:
-		state_preserver() noexcept {
+		[[nodiscard]] state_preserver() noexcept {
 			glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_vertex_array_binding);
 		}
 
@@ -98,9 +99,9 @@ private:
 		}
 
 		state_preserver(const state_preserver&) = delete;
-		state_preserver(state_preserver &&) = delete;
-		auto operator=(const state_preserver&)->state_preserver& = delete;
-		auto operator=(state_preserver &&)->state_preserver& = delete;
+		state_preserver(state_preserver&&) = delete;
+		auto operator=(const state_preserver&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLint m_vertex_array_binding = 0;

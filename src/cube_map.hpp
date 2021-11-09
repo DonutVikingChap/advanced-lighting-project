@@ -18,58 +18,56 @@ struct cube_map_vertex final {
 
 class cube_map_mesh final {
 public:
-	static constexpr auto vertex_count = std::size_t{36};
+	static constexpr auto vertices = std::array<cube_map_vertex, 36>{
+		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
+
+		cube_map_vertex{{-1.0f, -1.0f, 1.0f}},
+		cube_map_vertex{{-1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{-1.0f, -1.0f, 1.0f}},
+
+		cube_map_vertex{{1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, -1.0f}},
+
+		cube_map_vertex{{-1.0f, -1.0f, 1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, 1.0f}},
+		cube_map_vertex{{-1.0f, -1.0f, 1.0f}},
+
+		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, 1.0f}},
+		cube_map_vertex{{-1.0f, 1.0f, -1.0f}},
+
+		cube_map_vertex{{-1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, -1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, -1.0f}},
+		cube_map_vertex{{-1.0f, -1.0f, 1.0f}},
+		cube_map_vertex{{1.0f, -1.0f, 1.0f}},
+	};
 
 	[[nodiscard]] auto get() const noexcept -> GLuint {
 		return m_mesh.get();
 	}
 
 private:
-	mesh<cube_map_vertex> m_mesh{GL_STATIC_DRAW,
-		std::array<cube_map_vertex, vertex_count>{
-			cube_map_vertex{vec3{-1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, -1.0f}},
-
-			cube_map_vertex{vec3{-1.0f, -1.0f, 1.0f}},
-			cube_map_vertex{vec3{-1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{-1.0f, -1.0f, 1.0f}},
-
-			cube_map_vertex{vec3{1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, -1.0f}},
-
-			cube_map_vertex{vec3{-1.0f, -1.0f, 1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, 1.0f}},
-			cube_map_vertex{vec3{-1.0f, -1.0f, 1.0f}},
-
-			cube_map_vertex{vec3{-1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, 1.0f}},
-			cube_map_vertex{vec3{-1.0f, 1.0f, -1.0f}},
-
-			cube_map_vertex{vec3{-1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, -1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, -1.0f}},
-			cube_map_vertex{vec3{-1.0f, -1.0f, 1.0f}},
-			cube_map_vertex{vec3{1.0f, -1.0f, 1.0f}},
-		},
-		&cube_map_vertex::position};
+	mesh<cube_map_vertex> m_mesh{GL_STATIC_DRAW, vertices, &cube_map_vertex::position};
 };
 
 class cube_map_texture final {

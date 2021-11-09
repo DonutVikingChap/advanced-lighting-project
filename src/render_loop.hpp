@@ -124,8 +124,8 @@ public:
 	}
 
 private:
-	struct [[nodiscard]] sdl final {
-		sdl() {
+	struct sdl final {
+		[[nodiscard]] sdl() {
 			if (SDL_Init(SDL_INIT_VIDEO) != 0) {
 				throw render_loop_error{"Failed to initialize SDL!"};
 			}
