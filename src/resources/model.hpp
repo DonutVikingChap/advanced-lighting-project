@@ -34,14 +34,6 @@ struct model_vertex final {
 	vec2 texture_coordinates{};
 };
 
-inline constexpr auto model_vertex_attributes = std::tuple{
-	&model_vertex::position,
-	&model_vertex::normal,
-	&model_vertex::tangent,
-	&model_vertex::bitangent,
-	&model_vertex::texture_coordinates,
-};
-
 using model_index = GLuint;
 
 struct model_material final {
@@ -57,7 +49,14 @@ public:
 	static constexpr auto index_type = GLenum{GL_UNSIGNED_INT};
 
 	model_mesh(std::span<const model_vertex> vertices, std::span<const model_index> indices, const model_material& material)
-		: m_mesh(GL_STATIC_DRAW, GL_STATIC_DRAW, vertices, indices, model_vertex_attributes)
+		: m_mesh(GL_STATIC_DRAW, GL_STATIC_DRAW, vertices, indices,
+			  std::tuple{
+				  &model_vertex::position,
+				  &model_vertex::normal,
+				  &model_vertex::tangent,
+				  &model_vertex::bitangent,
+				  &model_vertex::texture_coordinates,
+			  })
 		, m_material(material)
 		, m_vertex_count(vertices.size())
 		, m_index_count(indices.size()) {}

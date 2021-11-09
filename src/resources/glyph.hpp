@@ -14,25 +14,12 @@ struct glyph_vertex final {
 	vec2 texture_coordinates{};
 };
 
-inline constexpr auto glyph_vertex_attributes = std::tuple{
-	&glyph_vertex::position,
-	&glyph_vertex::texture_coordinates,
-};
-
 struct glyph_instance final {
 	vec2 offset{};
 	vec2 scale{};
 	vec2 texture_offset{};
 	vec2 texture_scale{};
 	vec4 color{};
-};
-
-inline constexpr auto glyph_instance_attributes = std::tuple{
-	&glyph_instance::offset,
-	&glyph_instance::scale,
-	&glyph_instance::texture_offset,
-	&glyph_instance::texture_scale,
-	&glyph_instance::color,
 };
 
 class glyph_mesh final {
@@ -56,7 +43,23 @@ public:
 	}
 
 private:
-	mesh<glyph_vertex, no_index, glyph_instance> m_mesh{GL_STATIC_DRAW, GL_DYNAMIC_DRAW, vertices, {}, glyph_vertex_attributes, glyph_instance_attributes};
+	mesh<glyph_vertex, no_index, glyph_instance> m_mesh{
+		GL_STATIC_DRAW,
+		GL_DYNAMIC_DRAW,
+		vertices,
+		{},
+		std::tuple{
+			&glyph_vertex::position,
+			&glyph_vertex::texture_coordinates,
+		},
+		std::tuple{
+			&glyph_instance::offset,
+			&glyph_instance::scale,
+			&glyph_instance::texture_offset,
+			&glyph_instance::texture_scale,
+			&glyph_instance::color,
+		},
+	};
 };
 
 #endif

@@ -12,10 +12,6 @@ struct skybox_vertex final {
 	vec3 position{};
 };
 
-inline constexpr auto skybox_vertex_attributes = std::tuple{
-	&skybox_vertex::position,
-};
-
 class skybox_mesh final {
 public:
 	static constexpr auto primitive_type = GLenum{GL_TRIANGLES};
@@ -68,7 +64,7 @@ public:
 	}
 
 private:
-	mesh<skybox_vertex> m_mesh{GL_STATIC_DRAW, vertices, skybox_vertex_attributes};
+	mesh<skybox_vertex> m_mesh{GL_STATIC_DRAW, vertices, std::tuple{&skybox_vertex::position}};
 };
 
 #endif
