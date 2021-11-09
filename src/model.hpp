@@ -48,7 +48,6 @@ struct model_material final {
 	std::uint8_t albedo_texture_offset{};
 	std::uint8_t normal_texture_offset{};
 	std::uint8_t roughness_texture_offset{};
-	std::uint8_t specular_texture_offset{};
 	std::uint8_t metallic_texture_offset{};
 };
 
@@ -155,11 +154,10 @@ private:
 
 		const auto& mat = *scene.mMaterials[mesh.mMaterialIndex];
 		const auto material = model_material{
-			.albedo_texture_offset = add_texture(mat, aiTextureType_DIFFUSE, "default_diffuse.png"),
+			.albedo_texture_offset = add_texture(mat, aiTextureType_DIFFUSE, "default_albedo.png"),
 			.normal_texture_offset = add_texture(mat, aiTextureType_NORMALS, "default_normal.png"),
-			.roughness_texture_offset = add_texture(mat, aiTextureType_DIFFUSE_ROUGHNESS, "default_specular.png"),
-			.specular_texture_offset = add_texture(mat, aiTextureType_SPECULAR, "default_specular.png"),
-			.metallic_texture_offset = add_texture(mat, aiTextureType_DIFFUSE, "default_specular.png"),
+			.roughness_texture_offset = add_texture(mat, aiTextureType_SPECULAR, "default_roughness.png"),
+			.metallic_texture_offset = add_texture(mat, aiTextureType_SHININESS, "default_metallic.png"),
 		};
 
 		m_meshes.emplace_back(vertices, indices, material);

@@ -182,7 +182,6 @@ public:
 				glUniform1i(m_model_shader.material_albedo.location(), static_cast<GLint>(texture_units_begin + material.albedo_texture_offset));
 				glUniform1i(m_model_shader.material_normal.location(), static_cast<GLint>(texture_units_begin + material.normal_texture_offset));
 				glUniform1i(m_model_shader.material_roughness.location(), static_cast<GLint>(texture_units_begin + material.roughness_texture_offset));
-				glUniform1i(m_model_shader.material_specular.location(), static_cast<GLint>(texture_units_begin + material.specular_texture_offset));
 				glUniform1i(m_model_shader.material_metallic.location(), static_cast<GLint>(texture_units_begin + material.metallic_texture_offset));
 				for (const auto& instance : instances) {
 					const auto& model_matrix = instance.transform;
@@ -242,7 +241,6 @@ private:
 		shader_uniform material_albedo{program.get(), "material_albedo"};
 		shader_uniform material_normal{program.get(), "material_normal"};
 		shader_uniform material_roughness{program.get(), "material_roughness"};
-		shader_uniform material_specular{program.get(), "material_specular"};
 		shader_uniform material_metallic{program.get(), "material_metallic"};
 		shader_array<directional_light_uniform, directional_light_count> directional_lights{program.get(), "directional_lights"};
 		shader_array<point_light_uniform, point_light_count> point_lights{program.get(), "point_lights"};
