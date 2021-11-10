@@ -68,7 +68,7 @@ public:
 		set_options(GL_TEXTURE_2D_ARRAY, options);
 	}
 
-	texture(GLint internal_format, const image_view& image, const texture_options& options = {})
+	texture(GLint internal_format, image_view image, const texture_options& options = {})
 		: texture(internal_format, image.data(), image.width(), image.height(), pixel_format(image.pixel_size()), options) {}
 
 	texture(GLint internal_format, std::span<const image_view, 6> cubemap_images, const texture_options& options = {.repeat = false}) {
@@ -116,11 +116,11 @@ public:
 			pixels);
 	}
 
-	auto paste(const image_view& image, std::size_t x, std::size_t y) -> void {
+	auto paste(image_view image, std::size_t x, std::size_t y) -> void {
 		paste(image.data(), image.width(), image.height(), pixel_format(image.pixel_size()), x, y);
 	}
 
-	auto paste(const image_view& image, std::size_t x, std::size_t y, std::size_t z) -> void {
+	auto paste(image_view image, std::size_t x, std::size_t y, std::size_t z) -> void {
 		paste(image.data(), image.width(), image.height(), std::size_t{1}, pixel_format(image.pixel_size()), x, y, z);
 	}
 
@@ -153,7 +153,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver &&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;

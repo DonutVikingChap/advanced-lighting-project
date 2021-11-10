@@ -121,7 +121,7 @@ private:
 	std::size_t m_pixel_size = 0;
 };
 
-inline auto save_png(const image_view& image, const char* filename, int compression_level = 8) -> void {
+inline auto save_png(image_view image, const char* filename, int compression_level = 8) -> void {
 	const auto width = static_cast<int>(image.width());
 	const auto height = static_cast<int>(image.height());
 	const auto pixel_size = static_cast<int>(image.pixel_size());
@@ -132,7 +132,7 @@ inline auto save_png(const image_view& image, const char* filename, int compress
 	}
 }
 
-inline auto save_bmp(const image_view& image, const char* filename) -> void {
+inline auto save_bmp(image_view image, const char* filename) -> void {
 	const auto width = static_cast<int>(image.width());
 	const auto height = static_cast<int>(image.height());
 	const auto pixel_size = static_cast<int>(image.pixel_size());
@@ -142,7 +142,7 @@ inline auto save_bmp(const image_view& image, const char* filename) -> void {
 	}
 }
 
-inline auto save_tga(const image_view& image, const char* filename, bool use_rle_compression = true) -> void {
+inline auto save_tga(image_view image, const char* filename, bool use_rle_compression = true) -> void {
 	const auto width = static_cast<int>(image.width());
 	const auto height = static_cast<int>(image.height());
 	const auto pixel_size = static_cast<int>(image.pixel_size());
@@ -153,7 +153,7 @@ inline auto save_tga(const image_view& image, const char* filename, bool use_rle
 	}
 }
 
-inline auto save_jpg(const image_view& image, const char* filename, int quality) -> void {
+inline auto save_jpg(image_view image, const char* filename, int quality) -> void {
 	const auto width = static_cast<int>(image.width());
 	const auto height = static_cast<int>(image.height());
 	const auto pixel_size = static_cast<int>(image.pixel_size());
