@@ -16,6 +16,8 @@
 #include <memory>       // std::shared_ptr
 #include <span>         // std::span
 #include <stdexcept>    // std::exception
+#include <string>       // std::u8string
+#include <string_view>  // std::u8string_view
 
 class application final : public render_loop {
 public:
@@ -93,26 +95,7 @@ private:
 			ImGui::End();
 		}
 		m_scene.draw(m_renderer);
-		{
-			auto fps_color = vec4{0.0f, 1.0f, 0.0f, 1.0f};
-			auto fps_icon = u8"✅";
-			const auto fps = latest_measured_fps();
-			if (fps < 60.0f) {
-				fps_color = {1.0f, 0.0f, 0.0f, 1.0f};
-				fps_icon = u8"❌";
-			} else if (fps < 120.0f) {
-				fps_color = {1.0f, 1.0f, 0.0f, 1.0f};
-				fps_icon = u8"⚠";
-			} else if (fps < 240.0f) {
-				fps_color = vec4{1.0f, 1.0f, 1.0f, 1.0f};
-				fps_icon = u8"▶";
-			} else if (fps < 1000.0f) {
-				fps_color = vec4{1.0f, 1.0f, 1.0f, 1.0f};
-				fps_icon = u8"⏩";
-			}
-			m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, fps_color, fmt::format("     FPS: {}", fps));
-			m_renderer.text().draw_text(m_emoji_font, {2.0f, 27.0f}, {1.0f, 1.0f}, fps_color, fps_icon);
-		}
+		draw_fps_counter();
 		m_renderer.render(framebuffer::get_default(), m_viewport, m_scene.view_matrix(), m_scene.view_position());
 	}
 
@@ -132,6 +115,27 @@ private:
 		} else {
 			enable_gui();
 		}
+	}
+
+	auto draw_fps_counter() -> void {
+		auto fps_color = vec4{0.0f, 1.0f, 0.0f, 1.0f};
+		auto fps_icon = std::u8string_view{u8"✅"};
+		const auto fps = latest_measured_fps();
+		if (fps < 60) {
+			fps_color = {1.0f, 0.0f, 0.0f, 1.0f};
+			fps_icon = u8"❌";
+		} else if (fps < 120) {
+			fps_color = {1.0f, 1.0f, 0.0f, 1.0f};
+			fps_icon = u8"⚠";
+		} else if (fps < 240) {
+			fps_color = vec4{1.0f, 1.0f, 1.0f, 1.0f};
+			fps_icon = u8"▶";
+		} else if (fps < 1000) {
+			fps_color = vec4{1.0f, 1.0f, 1.0f, 1.0f};
+			fps_icon = u8"⏩";
+		}
+		m_renderer.text().draw_text(m_main_font, {2.0f, 27.0f}, {1.0f, 1.0f}, fps_color, fmt::format("     FPS: {}", fps));
+		m_renderer.text().draw_text(m_emoji_font, {2.0f, 27.0f}, {1.0f, 1.0f}, fps_color, std::u8string{fps_icon});
 	}
 
 	asset_manager m_asset_manager{};

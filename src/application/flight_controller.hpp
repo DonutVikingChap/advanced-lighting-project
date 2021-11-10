@@ -127,7 +127,7 @@ public:
 		return m_right_direction;
 	}
 
-	[[nodiscard]] auto up() const noexcept -> vec3 {
+	[[nodiscard]] auto up() const noexcept -> vec3 { // NOLINT(readability-convert-member-functions-to-static)
 		return up_direction;
 	}
 

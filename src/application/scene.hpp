@@ -25,7 +25,7 @@ public:
 		m_controller.handle_event(e, mouse_sensitivity);
 	}
 
-	auto tick(unsigned int tick_count, float delta_time) -> void {
+	auto tick(unsigned int tick_count, float delta_time) -> void { // NOLINT(readability-convert-member-functions-to-static) // TODO
 		(void)tick_count;
 		(void)delta_time;
 	}

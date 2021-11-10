@@ -77,9 +77,11 @@ public:
 		glBindTexture(GL_TEXTURE_CUBE_MAP, m_texture.get());
 		for (auto i = std::size_t{0}; i < cubemap_images.size(); ++i) {
 			const auto& image = cubemap_images[i];
+			const auto width = static_cast<GLsizei>(image.width());
+			const auto height = static_cast<GLsizei>(image.height());
 			const auto format = pixel_format(image.pixel_size());
 			set_unpack_alignment(format);
-			glTexImage2D(static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), 0, internal_format, image.width(), image.height(), 0, format, GL_UNSIGNED_BYTE, image.data());
+			glTexImage2D(static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, image.data());
 		}
 
 		set_options(GL_TEXTURE_CUBE_MAP, options);

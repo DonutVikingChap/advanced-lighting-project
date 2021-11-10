@@ -142,7 +142,7 @@ private:
 	auto buffer_vertex_data(GLenum usage, std::span<const Vertex> vertices, GLuint attribute_offset, Ts(Vertex::*... vertex_attributes)) -> void {
 		glBindBuffer(GL_ARRAY_BUFFER, m_vbo.get());
 		glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(Vertex)), vertices.data(), usage);
-		(setup_attribute<Vertex>(attribute_offset, vertex_attributes), ...);
+		(setup_vertex_attribute<Vertex>(attribute_offset, vertex_attributes), ...);
 	}
 
 	auto buffer_index_data(GLenum usage, std::span<const Index> indices) -> void requires(is_indexed) {
@@ -154,60 +154,60 @@ private:
 	auto buffer_instance_data(GLenum usage, std::span<const Instance> instances, GLuint attribute_offset, Ts(Instance::*... instance_attributes)) -> void requires(is_instanced) {
 		glBindBuffer(GL_ARRAY_BUFFER, m_ibo.get());
 		glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(instances.size() * sizeof(Instance)), instances.data(), usage);
-		(setup_attribute<Instance>(attribute_offset, instance_attributes), ...);
+		(setup_vertex_attribute<Instance>(attribute_offset, instance_attributes), ...);
 	}
 
-	template <typename Structure>
-	static auto enable_attribute(GLuint index) -> void {
+	template <typename VertexStruct>
+	static auto enable_vertex_attribute(GLuint index) -> void {
 		glEnableVertexAttribArray(index);
-		if constexpr (std::is_same_v<Structure, Instance>) {
+		if constexpr (std::is_same_v<VertexStruct, Instance>) {
 			glVertexAttribDivisor(index, 1);
 		}
 	}
 
-	template <typename Structure, typename T>
-	static auto setup_attribute(GLuint& index, T(Structure::*attribute)) -> void {
-		static_assert(std::is_standard_layout_v<Structure>, "Structure type must have standard layout!");
-		constexpr auto stride = static_cast<GLsizei>(sizeof(Structure));
-		const auto dummy_struct = Structure{};
-		const auto* const attribute_ptr = reinterpret_cast<const std::byte*>(std::addressof(dummy_struct.*attribute));
-		const auto* const base_ptr = reinterpret_cast<const std::byte*>(std::addressof(dummy_struct));
+	template <typename VertexStruct, typename T>
+	static auto setup_vertex_attribute(GLuint& index, T(VertexStruct::*attribute)) -> void {
+		static_assert(std::is_standard_layout_v<VertexStruct>, "Vertex type must have standard layout!");
+		constexpr auto stride = static_cast<GLsizei>(sizeof(VertexStruct));
+		const auto dummy_vertex = VertexStruct{};
+		const auto* const base_ptr = reinterpret_cast<const std::byte*>(std::addressof(dummy_vertex));
+		const auto* const attribute_ptr = reinterpret_cast<const std::byte*>(std::addressof(dummy_vertex.*attribute));
 		const auto offset = static_cast<std::uintptr_t>(attribute_ptr - base_ptr);
 		if constexpr (std::is_same_v<T, float>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 1, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
 		} else if constexpr (std::is_same_v<T, vec2>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
 		} else if constexpr (std::is_same_v<T, vec3>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
 		} else if constexpr (std::is_same_v<T, vec4>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
 		} else if constexpr (std::is_same_v<T, mat2>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset + sizeof(float) * 2)); // NOLINT(performance-no-int-to-ptr)
 		} else if constexpr (std::is_same_v<T, mat3>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset + sizeof(float) * 3)); // NOLINT(performance-no-int-to-ptr)
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset + sizeof(float) * 6)); // NOLINT(performance-no-int-to-ptr)
 		} else if constexpr (std::is_same_v<T, mat4>) {
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset)); // NOLINT(performance-no-int-to-ptr)
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset + sizeof(float) * 4)); // NOLINT(performance-no-int-to-ptr)
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset + sizeof(float) * 8)); // NOLINT(performance-no-int-to-ptr)
-			enable_attribute<Structure>(index);
+			enable_vertex_attribute<VertexStruct>(index);
 			glVertexAttribPointer(index++, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<const void*>(offset + sizeof(float) * 12)); // NOLINT(performance-no-int-to-ptr)
 		} else {
-			throw std::invalid_argument{"Invalid attribute type!"};
+			throw std::invalid_argument{"Invalid vertex attribute type!"};
 		}
 	}
 

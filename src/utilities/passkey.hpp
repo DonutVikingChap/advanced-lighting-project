@@ -4,7 +4,7 @@
 template <typename T>
 class passkey final {
 	friend T;
-	constexpr passkey() noexcept {}
+	constexpr passkey() noexcept {} // NOLINT(modernize-use-equals-default)
 };
 
 #endif

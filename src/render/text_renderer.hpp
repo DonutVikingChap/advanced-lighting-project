@@ -121,7 +121,7 @@ private:
 					std::floor(x) + std::round(glyph.bearing.x * text.scale.x),
 					top - std::floor(y) + std::round(glyph.bearing.y * text.scale.y) - glyph_scale.y,
 				};
-				m_glyph_instances.emplace_back(glyph_offset, glyph_scale, glyph.texture_offset, glyph.texture_scale, text.color);
+				m_glyph_instances.push_back(glyph_instance{glyph_offset, glyph_scale, glyph.texture_offset, glyph.texture_scale, text.color});
 				x += (glyph.advance + font.kerning(ch, (it == code_points.end()) ? 0 : *it)) * text.scale.x;
 			}
 		}
