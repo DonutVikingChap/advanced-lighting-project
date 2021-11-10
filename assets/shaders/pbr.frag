@@ -37,18 +37,27 @@ uniform sampler2DShadow spot_shadow_maps[SPOT_LIGHT_COUNT];
 
 uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
 
-float normal_tr_ggx(float d, float a) {
-	float a_sq = a * a;
-	float denominator_root = (d * d * (a_sq - 1.0) + 1.0);
+float normal_tr_ggx(float n_dot_x, float roughness) {
+	float a = roughness*roughness;
+	float a_sq = a*a;
+	float denominator_root = (n_dot_x * n_dot_x * (a_sq - 1.0) + 1.0);
 	return a_sq / (PI * denominator_root * denominator_root);
 }
 
-float geometry_schlick_ggx(float d, float k) {
-	return d / (d * (1.0 - k) + k);
+float geometry_schlick_ggx(float n_dot_x, float k) {
+	return n_dot_x / (n_dot_x * (1.0 - k) + k);
 }
 
-vec3 fresnel_schlick(float cos_theta, vec3 f_0) {
-	return f_0 + (1.0 - f_0) * pow(1.0 - cos_theta, 5);
+float geometry_smith(float n_dot_l, float n_dot_v, float a)
+{
+	float k = pow(a+1.0, 2)/8.0;
+	float ggx_1 = geometry_schlick_ggx(n_dot_v, k);
+	float ggx_2 = geometry_schlick_ggx(n_dot_l, k);
+	return ggx_1*ggx_2;
+}
+
+vec3 fresnel_schlick(float n_dot_l, vec3 f_0) {
+	return f_0 + (1.0 - f_0) * pow(1.0 - n_dot_l, 5.0);
 }
 
 vec3 pbr(
@@ -62,24 +71,26 @@ vec3 pbr(
 	vec3 reflectivity
 ) {
 	vec3 half_vector =  normalize(light_direction + view_direction);
-	float cos_omega = max(dot(normal, half_vector), 0.0);
-	float cos_theta = max(dot(normal, light_direction), 0.0);
+	float n_dot_h = max(dot(normal, half_vector), 0.0);
+	float n_dot_l = max(dot(normal, light_direction), 0.0);
+	float n_dot_v = max(dot(normal, view_direction), 0.0);
 
-	float k = pow(roughness + 1 , 2);
-	float d = normal_tr_ggx(cos_omega, roughness);
+	float d = normal_tr_ggx(n_dot_h, roughness);
 	vec3 f = fresnel_schlick(max(0.0, dot(half_vector, view_direction)), reflectivity);
-	float g = geometry_schlick_ggx(cos_omega, k) * geometry_schlick_ggx(cos_theta, k);
+	float g = geometry_smith(n_dot_l, n_dot_h, roughness);
 
 	vec3 k_d = mix(vec3(1.0) - f, vec3(0.0), metallic);
 	vec3 diffuse = albedo;
-	vec3 specular = d * f * g * 1.0 / max(EPSILON, 4.0 * cos_theta * cos_omega);
-	return (k_d * diffuse + specular) * light_color * cos_theta;
+	vec3 specular = f*g*(1.0 / (EPSILON + max(4.0 * n_dot_l * n_dot_v, 0.0)));
+
+	return (k_d * diffuse + specular) * light_color * n_dot_l;
 }
 
-void main() {
-	vec3 albedo = texture(material_albedo, io_texture_coordinates).rgb;
+void main() {	
+	vec3 albedo = pow(texture(material_albedo, io_texture_coordinates).rgb, vec3(2.2)); //convert from sRGB to linear
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
 	float metallic = texture(material_metallic, io_texture_coordinates).r;
+	//vec3 radiance = texture(cube)
 
 	vec3 reflectivity = mix(vec3(BASE_REFLECTIVITY), albedo, metallic);
 
@@ -101,12 +112,13 @@ void main() {
 		ambient = k_d * albedo;
 	}
 
-	vec3 result = vec3(0.0);
+	vec3 Lo = vec3(0.0);
 	for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
 		if (!directional_lights[i].is_active) {
 			continue;
 		}
-		result += pbr(
+
+		Lo += pbr(
 			normal,
 			view_direction,
 			-directional_lights[i].direction,
@@ -127,7 +139,7 @@ void main() {
 		vec3 light_direction = frag_to_light / light_distance;
 		float attenuation = 1.0 / (point_lights[i].constant + point_lights[i].linear * light_distance + point_lights[i].quadratic * light_distance_squared);
 
-		result += attenuation * pbr(
+		Lo += attenuation * pbr(
 			normal,
 			view_direction,
 			light_direction,
@@ -152,7 +164,7 @@ void main() {
 
 		float attenuation = intensity / (spot_lights[i].constant + spot_lights[i].linear * light_distance + spot_lights[i].quadratic * light_distance_squared);
 
-		result += attenuation * pbr(
+		Lo += attenuation * pbr(
 			normal,
 			view_direction,
 			light_direction,
@@ -162,5 +174,12 @@ void main() {
 			roughness,
 			reflectivity);
 	}
-	out_fragment_color = vec4(result + ambient, 1.0);
+
+	// gamma correction
+	vec3 color = Lo + ambient;
+	color /= (color + vec3(1.0));
+	color = pow(color, vec3(1.0/2.2));
+
+	out_fragment_color = vec4(Lo + ambient, 1.0);
+	
 }
