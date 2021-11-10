@@ -1,9 +1,9 @@
 #include "light.glsl"
 
-#define PI 3.1415
+#define PI 3.14159265359
 #define BASE_REFLECTIVITY 0.04
-#define EPSILON 0.00001
-#define AMBIENT_LIGHT_STRENGTH 0.1
+#define EPSILON 0.0001
+#define MAX_REFLECTION_LOD 4.0
 
 in vec3 io_fragment_position;
 in float io_fragment_depth;
@@ -23,6 +23,9 @@ uniform sampler2D material_normal;
 uniform sampler2D material_roughness;
 uniform sampler2D material_metallic;
 
+uniform samplerCube cubemap_texture;
+//uniform sampler2D brdf_lut;
+
 uniform DirectionalLight directional_lights[DIRECTIONAL_LIGHT_COUNT];
 uniform PointLight point_lights[POINT_LIGHT_COUNT];
 uniform SpotLight spot_lights[SPOT_LIGHT_COUNT];
@@ -37,7 +40,7 @@ uniform sampler2DShadow spot_shadow_maps[SPOT_LIGHT_COUNT];
 
 uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
 
-float normal_tr_ggx(float n_dot_x, float roughness) {
+float distribution_ggx(float n_dot_x, float roughness) {
 	float a = roughness*roughness;
 	float a_sq = a*a;
 	float denominator_root = (n_dot_x * n_dot_x * (a_sq - 1.0) + 1.0);
@@ -48,7 +51,7 @@ float geometry_schlick_ggx(float n_dot_x, float k) {
 	return n_dot_x / (n_dot_x * (1.0 - k) + k);
 }
 
-float geometry_smith(float n_dot_l, float n_dot_v, float a)
+float geometry_smith(float n_dot_v, float n_dot_l, float a)
 {
 	float k = pow(a+1.0, 2)/8.0;
 	float ggx_1 = geometry_schlick_ggx(n_dot_v, k);
@@ -57,13 +60,18 @@ float geometry_smith(float n_dot_l, float n_dot_v, float a)
 }
 
 vec3 fresnel_schlick(float n_dot_l, vec3 f_0) {
-	return f_0 + (1.0 - f_0) * pow(1.0 - n_dot_l, 5.0);
+	return f_0 + (1.0 - f_0) * pow(clamp(1.0 - n_dot_l, 0.0, 1.0), 5.0);;
+}
+
+vec3 fresnel_schlick_roughness(float n_dot_l, vec3 f_0, float roughness) {
+	return f_0 + (max(vec3(1.0 - roughness), f_0) - f_0) * pow(clamp(1.0 - n_dot_l, 0.0, 1.0), 5.0);
 }
 
 vec3 pbr(
 	vec3 normal,
 	vec3 view_direction,
 	vec3 light_direction,
+	float n_dot_v,
 	vec3 light_color,
 	vec3 albedo,
 	float metallic,
@@ -73,15 +81,15 @@ vec3 pbr(
 	vec3 half_vector =  normalize(light_direction + view_direction);
 	float n_dot_h = max(dot(normal, half_vector), 0.0);
 	float n_dot_l = max(dot(normal, light_direction), 0.0);
-	float n_dot_v = max(dot(normal, view_direction), 0.0);
+	vec3 r = reflect(-view_direction, normal);
 
-	float d = normal_tr_ggx(n_dot_h, roughness);
+	float d = distribution_ggx(n_dot_h, roughness);
 	vec3 f = fresnel_schlick(max(0.0, dot(half_vector, view_direction)), reflectivity);
-	float g = geometry_smith(n_dot_l, n_dot_h, roughness);
+	float g = geometry_smith(n_dot_v, n_dot_l, roughness);
 
-	vec3 k_d = mix(vec3(1.0) - f, vec3(0.0), metallic);
-	vec3 diffuse = albedo;
-	vec3 specular = f*g*(1.0 / (EPSILON + max(4.0 * n_dot_l * n_dot_v, 0.0)));
+	vec3 k_d = (vec3(1.0) - f)*(1.0 - metallic);
+	vec3 diffuse = albedo / PI;
+	vec3 specular = d*f*g*(1.0 / (EPSILON + max(4.0 * n_dot_l * n_dot_v, 0.0)));
 
 	return (k_d * diffuse + specular) * light_color * n_dot_l;
 }
@@ -90,7 +98,6 @@ void main() {
 	vec3 albedo = pow(texture(material_albedo, io_texture_coordinates).rgb, vec3(2.2)); //convert from sRGB to linear
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
 	float metallic = texture(material_metallic, io_texture_coordinates).r;
-	//vec3 radiance = texture(cube)
 
 	vec3 reflectivity = mix(vec3(BASE_REFLECTIVITY), albedo, metallic);
 
@@ -103,13 +110,24 @@ void main() {
 	normal = normal * 2.0 - 1.0;
 	normal = normalize(TBN * normal);
 
+	vec3 irradiance = vec3(0.03);//texture(irradiance_cubemap_texture, normal).rgb;
+
 	vec3 view_direction = normalize(view_position - io_fragment_position);
+	float n_dot_v = max(dot(normal, view_direction), 0.0);
 
 	vec3 ambient = vec3(0.0);
 	{
-		vec3 f = fresnel_schlick(AMBIENT_LIGHT_STRENGTH, reflectivity);
-		vec3 k_d = mix(vec3(1.0) - f, vec3(0.0), metallic);
-		ambient = k_d * albedo;
+		vec3 f = fresnel_schlick_roughness(n_dot_v, reflectivity, roughness);
+
+		vec3 k_d = vec3(1.0) - f;
+		vec3 diffuse = irradiance*albedo;
+		/*
+		float lod = roughness * MAX_REFLECTION_LOD;
+		vec3 cubemap_color = textureCubeLod(cubemap_texture, r, lod).rgb;
+		vec2 env_brdf = texture2D(brdf_lut, vec2(n_dot_v, roughness)).xy;
+		vec3 specular = cubemap_color * (f * env_brdf.x + env_brdf.y);
+		*/
+		ambient = k_d * diffuse;// + specular;
 	}
 
 	vec3 Lo = vec3(0.0);
@@ -122,6 +140,7 @@ void main() {
 			normal,
 			view_direction,
 			-directional_lights[i].direction,
+			n_dot_v,
 			directional_lights[i].color,
 			albedo,
 			metallic,
@@ -143,6 +162,7 @@ void main() {
 			normal,
 			view_direction,
 			light_direction,
+			n_dot_v,
 			point_lights[i].color,
 			albedo,
 			metallic,
@@ -168,6 +188,7 @@ void main() {
 			normal,
 			view_direction,
 			light_direction,
+			n_dot_v,
 			spot_lights[i].color,
 			albedo,
 			metallic,
@@ -180,6 +201,6 @@ void main() {
 	color /= (color + vec3(1.0));
 	color = pow(color, vec3(1.0/2.2));
 
-	out_fragment_color = vec4(Lo + ambient, 1.0);
+	out_fragment_color = vec4(color, 1.0);
 	
 }
