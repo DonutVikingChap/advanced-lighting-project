@@ -37,6 +37,7 @@ public:
 
 	auto draw(rendering_pipeline& renderer) -> void {
 		renderer.skybox().draw_skybox(m_skybox);
+		renderer.model().draw_cubemap(m_skybox);
 		if (renderer.gui().enabled() && !m_point_lights.empty()) {
 			ImGui::Begin("Light");
 			ImGui::SliderFloat3("Position", glm::value_ptr(m_point_lights[0].position), -10.0f, 10.0f);

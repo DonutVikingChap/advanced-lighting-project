@@ -3,6 +3,7 @@
 
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
+#include "../resources/cubemap.hpp"
 #include "../resources/light.hpp"
 #include "../resources/model.hpp"
 #include "../resources/shader.hpp"
@@ -28,13 +29,18 @@ public:
 	static constexpr auto spot_light_count = std::size_t{4};
 
 	static constexpr auto reserved_texture_units_begin = GLint{0};
-	static constexpr auto directional_light_texture_units_begin = GLint{reserved_texture_units_begin};
+	static constexpr auto cubemap_texture_unit = GLint{reserved_texture_units_begin};
+	static constexpr auto directional_light_texture_units_begin = GLint{cubemap_texture_unit + 1};
 	static constexpr auto point_light_texture_units_begin = GLint{directional_light_texture_units_begin + directional_light_count * 2};
 	static constexpr auto spot_light_texture_units_begin = GLint{point_light_texture_units_begin + point_light_count};
 	static constexpr auto reserved_texture_units_end = GLint{spot_light_texture_units_begin + spot_light_count};
 
 	auto resize(passkey<rendering_pipeline>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
 		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
+	}
+
+	auto draw_cubemap(std::shared_ptr<cubemap> cubemap) -> void {
+		m_cubemap = std::move(cubemap);
 	}
 
 	auto draw_directional_light(const directional_light& light) -> void {
@@ -57,6 +63,14 @@ public:
 		glUseProgram(m_model_shader.program.get());
 		glUniformMatrix4fv(m_model_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 		glUniform3fv(m_model_shader.view_position.location(), 1, glm::value_ptr(view_position));
+
+		// Upload cubemap.
+		if (m_cubemap) {
+			glActiveTexture(GL_TEXTURE0 + cubemap_texture_unit);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, m_cubemap->get());
+			glUniform1i(m_model_shader.cubemap_texture.location(), cubemap_texture_unit);
+			m_cubemap.reset();
+		}
 
 		// Upload directional lights.
 		auto light_index = std::size_t{0};
@@ -169,20 +183,20 @@ public:
 
 		// Render models.
 		for (const auto& [model, instances] : m_model_instances) {
-			const auto texture_units_begin = reserved_texture_units_end;
+			const auto model_texture_units_begin = reserved_texture_units_end;
 			auto i = 0;
 			for (const auto& texture : model->textures()) {
-				glActiveTexture(GL_TEXTURE0 + texture_units_begin + i);
+				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
 				glBindTexture(GL_TEXTURE_2D, texture->get());
 				++i;
 			}
 			for (const auto& mesh : model->meshes()) {
 				glBindVertexArray(mesh.get());
 				const auto& material = mesh.material();
-				glUniform1i(m_model_shader.material_albedo.location(), static_cast<GLint>(texture_units_begin + material.albedo_texture_offset));
-				glUniform1i(m_model_shader.material_normal.location(), static_cast<GLint>(texture_units_begin + material.normal_texture_offset));
-				glUniform1i(m_model_shader.material_roughness.location(), static_cast<GLint>(texture_units_begin + material.roughness_texture_offset));
-				glUniform1i(m_model_shader.material_metallic.location(), static_cast<GLint>(texture_units_begin + material.metallic_texture_offset));
+				glUniform1i(m_model_shader.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
+				glUniform1i(m_model_shader.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
+				glUniform1i(m_model_shader.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
+				glUniform1i(m_model_shader.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
 				for (const auto& instance : instances) {
 					const auto& model_matrix = instance.transform;
 					const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
@@ -242,6 +256,7 @@ private:
 		shader_uniform material_normal{program.get(), "material_normal"};
 		shader_uniform material_roughness{program.get(), "material_roughness"};
 		shader_uniform material_metallic{program.get(), "material_metallic"};
+		shader_uniform cubemap_texture{program.get(), "cubemap_texture"};
 		shader_array<directional_light_uniform, directional_light_count> directional_lights{program.get(), "directional_lights"};
 		shader_array<point_light_uniform, point_light_count> point_lights{program.get(), "point_lights"};
 		shader_array<spot_light_uniform, spot_light_count> spot_lights{program.get(), "spot_lights"};
@@ -267,6 +282,7 @@ private:
 	using model_instance_map = std::unordered_map<std::shared_ptr<textured_model>, std::vector<model_instance>>;
 
 	model_shader m_model_shader{};
+	std::shared_ptr<cubemap> m_cubemap{};
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{};
 	std::vector<spot_light> m_spot_lights{};
