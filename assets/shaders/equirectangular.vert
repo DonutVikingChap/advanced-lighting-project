@@ -7,5 +7,5 @@ uniform mat3 view_matrix;
 
 void main() {
 	io_texture_coordinates = in_position;
-	gl_Position = (projection_matrix * mat4(view_matrix) * vec4(in_position, 1.0)).xyww;
+	gl_Position = projection_matrix * mat4(view_matrix) * vec4(in_position, 1.0);
 }

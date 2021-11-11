@@ -85,6 +85,7 @@ private:
 					auto width = 0;
 					auto height = 0;
 					SDL_GetWindowSize(get_window(), &width, &height);
+					m_asset_manager.reload_shaders();
 					m_renderer.reload_shaders(width, height, vertical_fov, near_z, far_z);
 				} catch (const std::exception& e) {
 					fmt::print(stderr, "Failed to reload shaders: {}\n", e.what());

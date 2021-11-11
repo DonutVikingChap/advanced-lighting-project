@@ -5,7 +5,6 @@
 #include "../core/opengl.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/shader.hpp"
-#include "../resources/skybox.hpp"
 #include "../utilities/passkey.hpp"
 
 #include <glm/glm.hpp>          // glm::perspective
@@ -32,14 +31,14 @@ public:
 			glDepthFunc(GL_LEQUAL);
 
 			glUseProgram(m_skybox_shader.program.get());
-			glBindVertexArray(m_skybox_mesh.get());
+			glBindVertexArray(m_cubemap_mesh.get());
 
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, m_skybox_texture->get());
 
 			glUniformMatrix3fv(m_skybox_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 
-			glDrawArrays(skybox_mesh::primitive_type, 0, static_cast<GLsizei>(skybox_mesh::vertices.size()));
+			glDrawArrays(cubemap_mesh::primitive_type, 0, static_cast<GLsizei>(cubemap_mesh::vertices.size()));
 
 			glDepthFunc(GL_LESS);
 			m_skybox_texture.reset();
@@ -78,7 +77,7 @@ private:
 		shader_uniform skybox_texture{program.get(), "skybox_texture"};
 	};
 
-	skybox_mesh m_skybox_mesh{};
+	cubemap_mesh m_cubemap_mesh{};
 	skybox_shader m_skybox_shader{};
 	std::shared_ptr<cubemap> m_skybox_texture{};
 };

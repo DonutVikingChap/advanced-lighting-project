@@ -16,6 +16,10 @@
 
 class asset_manager final {
 public:
+	auto reload_shaders() -> void {
+		m_cubemap_converter.reload_shaders();
+	}
+
 	[[nodiscard]] auto load_font(const char* filename, unsigned int size) -> std::shared_ptr<font> {
 		const auto it = m_fonts.try_emplace(fmt::format("{}@{}", filename, size)).first;
 		if (auto ptr = it->second.lock()) {
@@ -36,12 +40,12 @@ public:
 		return ptr;
 	}
 
-	[[nodiscard]] auto load_image_hdr(std::string filename) -> std::shared_ptr<image_hdr> {
+	[[nodiscard]] auto load_image_hdr(std::string filename) -> std::shared_ptr<image> {
 		const auto it = m_images_hdr.try_emplace(std::move(filename)).first;
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<image_hdr>(image_hdr::load(it->first.c_str()));
+		auto ptr = std::make_shared<image>(image::load_hdr(it->first.c_str()));
 		it->second = ptr;
 		return ptr;
 	}
@@ -96,6 +100,26 @@ public:
 			return ptr;
 		}
 		auto ptr = std::make_shared<cubemap>(cubemap::load_hdr(filename_prefix, extension, cubemap_texture_options));
+		it->second = ptr;
+		return ptr;
+	}
+
+	[[nodiscard]] auto load_cubemap_equirectangular(const char* filename, std::size_t resolution) -> std::shared_ptr<cubemap> {
+		const auto it = m_cubemaps.try_emplace(fmt::format("{}@{}", filename, resolution)).first;
+		if (auto ptr = it->second.lock()) {
+			return ptr;
+		}
+		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular(m_cubemap_converter, filename, resolution, cubemap_texture_options));
+		it->second = ptr;
+		return ptr;
+	}
+
+	[[nodiscard]] auto load_cubemap_equirectangular_hdr(const char* filename, std::size_t resolution) -> std::shared_ptr<cubemap> {
+		const auto it = m_cubemaps_hdr.try_emplace(fmt::format("{}@{}", filename, resolution)).first;
+		if (auto ptr = it->second.lock()) {
+			return ptr;
+		}
+		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular_hdr(m_cubemap_converter, filename, resolution, cubemap_texture_options));
 		it->second = ptr;
 		return ptr;
 	}
@@ -165,16 +189,16 @@ private:
 
 	using font_cache = std::unordered_map<std::string, std::weak_ptr<font>>;
 	using image_cache = std::unordered_map<std::string, std::weak_ptr<image>>;
-	using image_hdr_cache = std::unordered_map<std::string, std::weak_ptr<image_hdr>>;
 	using texture_cache = std::unordered_map<std::string, std::weak_ptr<texture>>;
 	using cubemap_cache = std::unordered_map<std::string, std::weak_ptr<cubemap>>;
 	using model_cache = std::unordered_map<std::string, std::weak_ptr<model>>;
 	using textured_model_cache = std::unordered_map<std::string, std::weak_ptr<textured_model>>;
 
 	font_library m_font_library{};
+	cubemap_converter m_cubemap_converter{};
 	font_cache m_fonts{};
 	image_cache m_images{};
-	image_hdr_cache m_images_hdr{};
+	image_cache m_images_hdr{};
 	texture_cache m_textures{};
 	texture_cache m_textures_hdr{};
 	cubemap_cache m_cubemaps{};
