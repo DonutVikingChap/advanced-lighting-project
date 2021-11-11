@@ -17,6 +17,8 @@ class rendering_pipeline;
 
 class skybox_renderer final {
 public:
+	static constexpr auto gamma = 2.2f;
+
 	auto resize(passkey<rendering_pipeline>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
 		m_skybox_shader.resize(width, height, vertical_fov, near_z, far_z);
 	}
@@ -66,6 +68,10 @@ private:
 		shader_program program{{
 			.vertex_shader_filename = "assets/shaders/skybox.vert",
 			.fragment_shader_filename = "assets/shaders/skybox.frag",
+			.definitions =
+				{
+					{"GAMMA", gamma},
+				},
 		}};
 		shader_uniform projection_matrix{program.get(), "projection_matrix"};
 		shader_uniform view_matrix{program.get(), "view_matrix"};

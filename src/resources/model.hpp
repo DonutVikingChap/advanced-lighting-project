@@ -6,7 +6,7 @@
 #include "mesh.hpp"
 #include "texture.hpp"
 
-#include <algorithm>            // std::ranges::find
+#include <algorithm>            // std::ranges::find_if
 #include <assimp/Importer.hpp>  // Assimp::Importer
 #include <assimp/postprocess.h> // ai...
 #include <assimp/scene.h>       // ai...
@@ -84,30 +84,39 @@ private:
 	std::size_t m_index_count;
 };
 
+struct model_texture_info final {
+	std::string filename{};
+	bool hdr = false;
+};
+
 class model final {
 public:
-	model(const char* filename) {
+	[[nodiscard]] static auto load(const char* filename) -> model {
+		auto result = model{};
 		auto importer = Assimp::Importer{};
 		const auto* const scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
 		if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !scene->mRootNode) {
 			throw model_error{fmt::format("Failed to load model \"{}\": {}", filename, importer.GetErrorString())};
 		}
 		try {
-			add_node(*scene->mRootNode, *scene);
+			result.add_node(*scene->mRootNode, *scene);
 		} catch (const std::exception& e) {
 			throw model_error{fmt::format("Failed to load model \"{}\": {}", filename, e.what())};
 		}
+		return result;
 	}
 
 	[[nodiscard]] auto meshes() const noexcept -> std::span<const model_mesh> {
 		return m_meshes;
 	}
 
-	[[nodiscard]] auto texture_names() const noexcept -> std::span<const std::string> {
-		return m_texture_names;
+	[[nodiscard]] auto texture_info() const noexcept -> std::span<const model_texture_info> {
+		return m_textures;
 	}
 
 private:
+	model() noexcept = default;
+
 	[[nodiscard]] auto add_texture(const aiMaterial& mat, aiTextureType type, const char* default_name) -> std::uint8_t {
 		auto name = aiString{};
 		if (const auto texture_count = mat.GetTextureCount(type); texture_count == 0u) {
@@ -117,11 +126,13 @@ private:
 		} else {
 			throw model_error{"Materials cannot have multiple textures of the same type."};
 		}
-		if (const auto it = std::ranges::find(m_texture_names, name.C_Str()); it != m_texture_names.end()) {
-			return static_cast<std::uint8_t>(std::distance(m_texture_names.begin(), it));
+		if (const auto it = std::ranges::find_if(m_textures, [&](const auto& info) { return info.filename == name.C_Str(); }); it != m_textures.end()) {
+			return static_cast<std::uint8_t>(std::distance(m_textures.begin(), it));
 		}
-		const auto offset = static_cast<std::uint8_t>(m_texture_names.size());
-		m_texture_names.emplace_back(name.C_Str());
+		const auto offset = static_cast<std::uint8_t>(m_textures.size());
+		auto filename = std::string{name.C_Str()};
+		const auto hdr = filename.ends_with(".hdr");
+		m_textures.emplace_back(std::move(filename), hdr);
 		return offset;
 	}
 
@@ -172,7 +183,7 @@ private:
 	}
 
 	std::vector<model_mesh> m_meshes{};
-	std::vector<std::string> m_texture_names{};
+	std::vector<model_texture_info> m_textures{};
 };
 
 class textured_model final {
@@ -190,8 +201,8 @@ public:
 		return m_meshes;
 	}
 
-	[[nodiscard]] auto texture_names() const noexcept -> std::span<const std::string> {
-		return m_model->texture_names();
+	[[nodiscard]] auto texture_info() const noexcept -> std::span<const model_texture_info> {
+		return m_model->texture_info();
 	}
 
 	[[nodiscard]] auto textures() const noexcept -> std::span<const std::shared_ptr<texture>> {

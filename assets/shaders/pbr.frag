@@ -1,4 +1,5 @@
 #include "light.glsl"
+#include "gamma.glsl"
 
 #define PI 3.14159265359
 #define BASE_REFLECTIVITY 0.04
@@ -196,11 +197,5 @@ void main() {
 			reflectivity);
 	}
 
-	// gamma correction
-	vec3 color = Lo + ambient;
-	color /= (color + vec3(1.0));
-	color = pow(color, vec3(1.0/2.2));
-
-	out_fragment_color = vec4(Lo + ambient, 1.0);
-	
+	out_fragment_color = vec4(gamma_correct(Lo + ambient), 1.0);
 }
