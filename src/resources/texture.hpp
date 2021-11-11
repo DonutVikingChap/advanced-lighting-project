@@ -3,11 +3,9 @@
 
 #include "../core/handle.hpp"
 #include "../core/opengl.hpp"
-#include "image.hpp"
 
 #include <cstddef>      // std::byte, std::size_t
 #include <fmt/format.h> // fmt::format
-#include <span>         // std::span
 #include <stdexcept>    // std::invalid_argument
 
 struct texture_options final {
@@ -19,89 +17,86 @@ struct texture_options final {
 
 class texture final {
 public:
-	[[nodiscard]] static auto pixel_format(std::size_t pixel_size) -> GLenum {
-		switch (pixel_size) {
+	[[nodiscard]] static auto pixel_format(std::size_t channel_count) -> GLenum {
+		switch (channel_count) {
 			case 1: return GL_RED;
 			case 2: return GL_RG;
 			case 3: return GL_RGB;
 			case 4: return GL_RGBA;
 			default: break;
 		}
-		throw std::invalid_argument{fmt::format("Invalid texture pixel size \"{}\"!", pixel_size)};
+		throw std::invalid_argument{fmt::format("Invalid texture channel count \"{}\"!", channel_count)};
 	}
 
-	[[nodiscard]] static auto internal_pixel_format(std::size_t pixel_size) -> GLint {
-		switch (pixel_size) {
+	[[nodiscard]] static auto internal_pixel_format_ldr(std::size_t channel_count) -> GLint {
+		switch (channel_count) {
 			case 1: return GL_R8;
 			case 2: return GL_RG8;
 			case 3: return GL_RGB8;
 			case 4: return GL_RGBA8;
 			default: break;
 		}
-		throw std::invalid_argument{fmt::format("Invalid texture pixel size \"{}\"!", pixel_size)};
+		throw std::invalid_argument{fmt::format("Invalid texture channel count \"{}\"!", channel_count)};
 	}
 
-	texture(GLint internal_format, const std::byte* pixels, std::size_t width, std::size_t height, GLenum format, const texture_options& options = {})
-		: m_width(width)
-		, m_height(height) {
-		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
-
-		set_unpack_alignment(format);
-
-		glBindTexture(GL_TEXTURE_2D, m_texture.get());
-		glTexImage2D(GL_TEXTURE_2D, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, format, GL_UNSIGNED_BYTE, pixels);
-
-		set_options(GL_TEXTURE_2D, options);
-	}
-
-	texture(GLint internal_format, const std::byte* pixels, std::size_t width, std::size_t height, std::size_t depth, GLenum format, const texture_options& options = {})
-		: m_width(width)
-		, m_height(height) {
-		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
-
-		set_unpack_alignment(format);
-
-		glBindTexture(GL_TEXTURE_2D_ARRAY, m_texture.get());
-		glTexImage3D(
-			GL_TEXTURE_2D_ARRAY, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), static_cast<GLsizei>(depth), 0, format, GL_UNSIGNED_BYTE, pixels);
-
-		set_options(GL_TEXTURE_2D_ARRAY, options);
-	}
-
-	texture(GLint internal_format, image_view image, const texture_options& options = {})
-		: texture(internal_format, image.data(), image.width(), image.height(), pixel_format(image.pixel_size()), options) {}
-
-	texture(GLint internal_format, std::span<const image_view, 6> cubemap_images, const texture_options& options = {.repeat = false}) {
-		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
-
-		glBindTexture(GL_TEXTURE_CUBE_MAP, m_texture.get());
-		for (auto i = std::size_t{0}; i < cubemap_images.size(); ++i) {
-			const auto& image = cubemap_images[i];
-			const auto width = static_cast<GLsizei>(image.width());
-			const auto height = static_cast<GLsizei>(image.height());
-			const auto format = pixel_format(image.pixel_size());
-			set_unpack_alignment(format);
-			glTexImage2D(static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, image.data());
+	[[nodiscard]] static auto internal_pixel_format_hdr(std::size_t channel_count) -> GLint {
+		switch (channel_count) {
+			case 1: return GL_R16F;
+			case 2: return GL_RG16F;
+			case 3: return GL_RGB16F;
+			case 4: return GL_RGBA16F;
+			default: break;
 		}
-
-		set_options(GL_TEXTURE_CUBE_MAP, options);
+		throw std::invalid_argument{fmt::format("Invalid texture channel count \"{}\"!", channel_count)};
 	}
 
-	auto paste(const std::byte* pixels, std::size_t width, std::size_t height, GLenum format, std::size_t x, std::size_t y) -> void {
+	[[nodiscard]] static auto create_2d(
+		GLint internal_format, std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels, const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
-
-		set_unpack_alignment(format);
-
-		glBindTexture(GL_TEXTURE_2D, m_texture.get());
-		glTexSubImage2D(
-			GL_TEXTURE_2D, 0, static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height), format, GL_UNSIGNED_BYTE, pixels);
+		auto result = texture{width, height};
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glBindTexture(GL_TEXTURE_2D, result.get());
+		glTexImage2D(GL_TEXTURE_2D, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, format, type, pixels);
+		set_options(GL_TEXTURE_2D, options);
+		return result;
 	}
 
-	auto paste(const std::byte* pixels, std::size_t width, std::size_t height, std::size_t depth, GLenum format, std::size_t x, std::size_t y, std::size_t z) -> void {
+	[[nodiscard]] static auto create_2d_array(GLint internal_format, std::size_t width, std::size_t height, std::size_t depth, GLenum format, GLenum type, const void* pixels,
+		const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
+		auto result = texture{width, height};
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, result.get());
+		glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), static_cast<GLsizei>(depth), 0, format, type, pixels);
+		set_options(GL_TEXTURE_2D_ARRAY, options);
+		return result;
+	}
 
-		set_unpack_alignment(format);
+	[[nodiscard]] static auto create_cubemap(GLint internal_format, std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels_px, const void* pixels_nx,
+		const void* pixels_py, const void* pixels_ny, const void* pixels_pz, const void* pixels_nz, const texture_options& options) -> texture {
+		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
+		auto result = texture{width, height};
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
+		auto target = GLenum{GL_TEXTURE_CUBE_MAP_POSITIVE_X};
+		for (const auto* const pixels : {pixels_px, pixels_nx, pixels_py, pixels_ny, pixels_pz, pixels_nz}) {
+			glTexImage2D(target, 0, internal_format, width, height, 0, format, type, pixels);
+			++target;
+		}
+		set_options(GL_TEXTURE_CUBE_MAP, options);
+		return result;
+	}
 
+	auto paste_2d(std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels, std::size_t x, std::size_t y) -> void {
+		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glBindTexture(GL_TEXTURE_2D, m_texture.get());
+		glTexSubImage2D(GL_TEXTURE_2D, 0, static_cast<GLint>(x), static_cast<GLint>(y), static_cast<GLsizei>(width), static_cast<GLsizei>(height), format, type, pixels);
+	}
+
+	auto paste_3d(std::size_t width, std::size_t height, std::size_t depth, GLenum format, GLenum type, const void* pixels, std::size_t x, std::size_t y, std::size_t z) -> void {
+		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, m_texture.get());
 		glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
 			0,
@@ -112,16 +107,8 @@ public:
 			static_cast<GLsizei>(height),
 			static_cast<GLsizei>(depth),
 			format,
-			GL_UNSIGNED_BYTE,
+			type,
 			pixels);
-	}
-
-	auto paste(image_view image, std::size_t x, std::size_t y) -> void {
-		paste(image.data(), image.width(), image.height(), pixel_format(image.pixel_size()), x, y);
-	}
-
-	auto paste(image_view image, std::size_t x, std::size_t y, std::size_t z) -> void {
-		paste(image.data(), image.width(), image.height(), std::size_t{1}, pixel_format(image.pixel_size()), x, y, z);
 	}
 
 	[[nodiscard]] auto width() const noexcept -> std::size_t {
@@ -137,6 +124,10 @@ public:
 	}
 
 private:
+	texture(std::size_t width, std::size_t height)
+		: m_width(width)
+		, m_height(height) {}
+
 	class state_preserver final {
 	public:
 		[[nodiscard]] state_preserver(GLenum texture_target, GLenum texture_target_binding) noexcept
@@ -153,17 +144,13 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		auto operator=(state_preserver &&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;
 		GLint m_unpack_alignment = 0;
 		GLint m_texture = 0;
 	};
-
-	static auto set_unpack_alignment(GLenum format) noexcept -> void {
-		glPixelStorei(GL_UNPACK_ALIGNMENT, (format == GL_RED) ? 1 : 4);
-	}
 
 	static auto set_options(GLenum target, const texture_options& options) noexcept -> void {
 		glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY, options.max_anisotropy);
@@ -199,8 +186,8 @@ private:
 		}
 		return tex;
 	}()};
-	std::size_t m_width = 0;
-	std::size_t m_height = 0;
+	std::size_t m_width;
+	std::size_t m_height;
 };
 
 #endif

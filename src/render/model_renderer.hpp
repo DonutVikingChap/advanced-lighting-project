@@ -24,6 +24,7 @@ class rendering_pipeline;
 
 class model_renderer final {
 public:
+	static constexpr auto gamma = 2.2f;
 	static constexpr auto directional_light_count = std::size_t{1};
 	static constexpr auto point_light_count = std::size_t{4};
 	static constexpr auto spot_light_count = std::size_t{4};
@@ -241,6 +242,7 @@ private:
 			.fragment_shader_filename = "assets/shaders/pbr.frag",
 			.definitions =
 				{
+					{"GAMMA", gamma},
 					{"DIRECTIONAL_LIGHT_COUNT", directional_light_count},
 					{"POINT_LIGHT_COUNT", point_light_count},
 					{"SPOT_LIGHT_COUNT", spot_light_count},

@@ -32,7 +32,7 @@ struct render_loop_options final {
 
 class render_loop {
 public:
-	render_loop(std::span<char*> arguments, const render_loop_options& options = {})
+	render_loop(std::span<char*> arguments, const render_loop_options& options)
 		: m_clock_frequency(SDL_GetPerformanceFrequency())
 		, m_clock_interval(1.0f / static_cast<float>(m_clock_frequency))
 		, m_tick_interval(static_cast<Uint64>(std::ceil(static_cast<float>(m_clock_frequency) / options.tick_rate)))
@@ -91,7 +91,7 @@ public:
 	render_loop(const render_loop&) = delete;
 	render_loop(render_loop&&) = delete;
 	auto operator=(const render_loop&) -> render_loop& = delete;
-	auto operator=(render_loop &&) -> render_loop& = delete;
+	auto operator=(render_loop&&) -> render_loop& = delete;
 
 	auto run() -> void {
 		m_start_time = SDL_GetPerformanceCounter();
@@ -136,7 +136,7 @@ private:
 		sdl(const sdl&) = delete;
 		sdl(sdl&&) = delete;
 		auto operator=(const sdl&) -> sdl& = delete;
-		auto operator=(sdl &&) -> sdl& = delete;
+		auto operator=(sdl&&) -> sdl& = delete;
 	};
 
 	struct sdl_initializer final {

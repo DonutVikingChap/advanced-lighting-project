@@ -91,7 +91,7 @@ private:
 	static constexpr auto pitch_speed = 3.49066f;
 
 	asset_manager& m_asset_manager;
-	std::shared_ptr<cubemap> m_skybox = m_asset_manager.load_cubemap("assets/textures/studio_country_hall/", ".hdr");
+	std::shared_ptr<cubemap> m_skybox = m_asset_manager.load_cubemap_hdr("assets/textures/studio_country_hall/", ".hdr");
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{
 		{
