@@ -3,7 +3,7 @@
 
 #define PI 3.14159265359
 #define BASE_REFLECTIVITY 0.04
-#define EPSILON 0.0001
+#define EPSILON 0.00001
 #define MAX_REFLECTION_LOD 4.0
 
 in vec3 io_fragment_position;
@@ -90,7 +90,7 @@ vec3 pbr(
 
 	vec3 k_d = (vec3(1.0) - f)*(1.0 - metallic);
 	vec3 diffuse = albedo / PI;
-	vec3 specular = d*f*g*(1.0 / (EPSILON + max(4.0 * n_dot_l * n_dot_v, 0.0)));
+	vec3 specular = d*f*g*(1.0 / (max(4.0 * n_dot_l * n_dot_v, EPSILON)));
 
 	return (k_d * diffuse + specular) * light_color * n_dot_l;
 }
@@ -107,9 +107,9 @@ void main() {
 	vec3 bitangent = normalize(io_bitangent);
 	mat3 TBN = mat3(io_tangent, io_tangent, io_normal);
 
-	normal = texture(material_normal, io_texture_coordinates).rgb;
-	normal = normal * 2.0 - 1.0;
-	normal = normalize(TBN * normal);
+	vec3 surface_normal = texture(material_normal, io_texture_coordinates).rgb;
+	surface_normal = surface_normal * 2.0 - 1.0;
+	normal = normalize(TBN * surface_normal);
 
 	vec3 irradiance = vec3(0.03);//texture(irradiance_cubemap_texture, normal).rgb;
 
