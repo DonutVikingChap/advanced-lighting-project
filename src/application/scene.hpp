@@ -106,8 +106,12 @@ private:
 	std::vector<spot_light> m_spot_lights{};
 	std::vector<object> m_objects{
 		{
+			.model = m_asset_manager.load_textured_model("assets/models/sponza.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
+		},
+		{
 			.model = m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"),
-			.transform = glm::identity<mat4>(),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
 		},
 		{
 			.model = m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),
