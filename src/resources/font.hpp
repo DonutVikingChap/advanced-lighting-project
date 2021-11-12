@@ -192,8 +192,6 @@ private:
 		std::size_t height;
 	};
 
-	static constexpr auto glyph_format = GLenum{GL_RED};
-	static constexpr auto glyph_type = GLenum{GL_UNSIGNED_BYTE};
 	static constexpr auto atlas_initial_size = std::size_t{128};
 	static constexpr auto atlas_growth_factor = std::size_t{2};
 	static constexpr auto atlas_internal_format = GLint{GL_R8};
@@ -216,8 +214,7 @@ private:
 
 	auto grow_atlas() -> void {
 		const auto preserver = state_preserver{};
-		auto new_atlas = texture::create_2d(
-			atlas_internal_format, m_atlas.width() * atlas_growth_factor, m_atlas.height() * atlas_growth_factor, glyph_format, glyph_type, nullptr, atlas_options);
+		auto new_atlas = texture::create_2d_uninitialized(atlas_internal_format, m_atlas.width() * atlas_growth_factor, m_atlas.height() * atlas_growth_factor, atlas_options);
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
 		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_atlas.get(), 0);
@@ -271,7 +268,7 @@ private:
 			}
 			x = row->width + padding;
 			y = row->top + padding;
-			m_atlas.paste_2d(width, height, glyph_format, glyph_type, pixels, x, y);
+			m_atlas.paste_2d(width, height, GL_RED, GL_UNSIGNED_BYTE, pixels, x, y);
 			row->width += padded_width;
 		}
 		const auto texture_size = vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
@@ -295,7 +292,7 @@ private:
 	using face_ptr = std::unique_ptr<std::remove_pointer_t<FT_Face>, face_deleter>;
 
 	face_ptr m_face;
-	texture m_atlas = texture::create_2d(atlas_internal_format, atlas_initial_size, atlas_initial_size, glyph_format, glyph_type, nullptr, atlas_options);
+	texture m_atlas = texture::create_2d_uninitialized(atlas_internal_format, atlas_initial_size, atlas_initial_size, atlas_options);
 	std::vector<glyph_row> m_atlas_rows{};
 	std::vector<font_glyph> m_ascii_glyphs{};
 	std::unordered_map<char32_t, font_glyph> m_other_glyphs{};

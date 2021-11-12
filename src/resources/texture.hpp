@@ -61,6 +61,10 @@ public:
 		return result;
 	}
 
+	[[nodiscard]] static auto create_2d_uninitialized(GLint internal_format, std::size_t width, std::size_t height, const texture_options& options) -> texture {
+		return create_2d(internal_format, width, height, GL_RED, GL_UNSIGNED_BYTE, nullptr, options);
+	}
+
 	[[nodiscard]] static auto create_2d_array(GLint internal_format, std::size_t width, std::size_t height, std::size_t depth, GLenum format, GLenum type, const void* pixels,
 		const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
@@ -72,19 +76,28 @@ public:
 		return result;
 	}
 
-	[[nodiscard]] static auto create_cubemap(GLint internal_format, std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels_px, const void* pixels_nx,
+	[[nodiscard]] static auto create_2d_array_uninitialized(GLint internal_format, std::size_t width, std::size_t height, std::size_t depth, const texture_options& options)
+		-> texture {
+		return create_2d_array(internal_format, width, height, depth, GL_RED, GL_UNSIGNED_BYTE, nullptr, options);
+	}
+
+	[[nodiscard]] static auto create_cubemap(GLint internal_format, std::size_t resolution, GLenum format, GLenum type, const void* pixels_px, const void* pixels_nx,
 		const void* pixels_py, const void* pixels_ny, const void* pixels_pz, const void* pixels_nz, const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
-		auto result = texture{width, height};
+		auto result = texture{resolution, resolution};
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
 		auto target = GLenum{GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 		for (const auto* const pixels : {pixels_px, pixels_nx, pixels_py, pixels_ny, pixels_pz, pixels_nz}) {
-			glTexImage2D(target, 0, internal_format, width, height, 0, format, type, pixels);
+			glTexImage2D(target, 0, internal_format, resolution, resolution, 0, format, type, pixels);
 			++target;
 		}
 		set_options(GL_TEXTURE_CUBE_MAP, options);
 		return result;
+	}
+
+	[[nodiscard]] static auto create_cubemap_uninitialized(GLint internal_format, std::size_t resolution, const texture_options& options) -> texture {
+		return create_cubemap(internal_format, resolution, GL_RED, GL_UNSIGNED_BYTE, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, options);
 	}
 
 	auto paste_2d(std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels, std::size_t x, std::size_t y) -> void {

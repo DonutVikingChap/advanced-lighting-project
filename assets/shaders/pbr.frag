@@ -1,9 +1,9 @@
 #include "light.glsl"
 #include "gamma.glsl"
+#include "math.glsl"
+#include "pbr.glsl"
 
-#define PI 3.14159265359
 #define BASE_REFLECTIVITY 0.04
-#define EPSILON 0.00001
 #define MAX_REFLECTION_LOD 4.0
 
 in vec3 io_fragment_position;
@@ -40,60 +40,6 @@ uniform samplerCubeShadow point_shadow_maps[POINT_LIGHT_COUNT];
 uniform sampler2DShadow spot_shadow_maps[SPOT_LIGHT_COUNT];
 
 uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
-
-float distribution_ggx(float n_dot_x, float roughness) {
-	float a = roughness*roughness;
-	float a_sq = a*a;
-	float denominator_root = (n_dot_x * n_dot_x * (a_sq - 1.0) + 1.0);
-	return a_sq / (PI * denominator_root * denominator_root);
-}
-
-float geometry_schlick_ggx(float n_dot_x, float k) {
-	return n_dot_x / (n_dot_x * (1.0 - k) + k);
-}
-
-float geometry_smith(float n_dot_v, float n_dot_l, float a)
-{
-	float k = pow(a+1.0, 2)/8.0;
-	float ggx_1 = geometry_schlick_ggx(n_dot_v, k);
-	float ggx_2 = geometry_schlick_ggx(n_dot_l, k);
-	return ggx_1*ggx_2;
-}
-
-vec3 fresnel_schlick(float n_dot_l, vec3 f_0) {
-	return f_0 + (1.0 - f_0) * pow(clamp(1.0 - n_dot_l, 0.0, 1.0), 5.0);;
-}
-
-vec3 fresnel_schlick_roughness(float n_dot_l, vec3 f_0, float roughness) {
-	return f_0 + (max(vec3(1.0 - roughness), f_0) - f_0) * pow(clamp(1.0 - n_dot_l, 0.0, 1.0), 5.0);
-}
-
-vec3 pbr(
-	vec3 normal,
-	vec3 view_direction,
-	vec3 light_direction,
-	float n_dot_v,
-	vec3 light_color,
-	vec3 albedo,
-	float metallic,
-	float roughness,
-	vec3 reflectivity
-) {
-	vec3 half_vector =  normalize(light_direction + view_direction);
-	float n_dot_h = max(dot(normal, half_vector), 0.0);
-	float n_dot_l = max(dot(normal, light_direction), 0.0);
-	vec3 r = reflect(-view_direction, normal);
-
-	float d = distribution_ggx(n_dot_h, roughness);
-	vec3 f = fresnel_schlick(max(0.0, dot(half_vector, view_direction)), reflectivity);
-	float g = geometry_smith(n_dot_v, n_dot_l, roughness);
-
-	vec3 k_d = (vec3(1.0) - f)*(1.0 - metallic);
-	vec3 diffuse = albedo / PI;
-	vec3 specular = d*f*g*(1.0 / (max(4.0 * n_dot_l * n_dot_v, EPSILON)));
-
-	return (k_d * diffuse + specular) * light_color * n_dot_l;
-}
 
 void main() {	
 	vec3 albedo = pow(texture(material_albedo, io_texture_coordinates).rgb, vec3(2.2)); //convert from sRGB to linear

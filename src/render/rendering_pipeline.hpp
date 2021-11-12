@@ -38,6 +38,7 @@ public:
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
 		glEnable(GL_MULTISAMPLE);
+		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 		opengl_context::check_status();
 	}

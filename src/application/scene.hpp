@@ -85,7 +85,7 @@ private:
 	};
 
 	static constexpr auto mouse_sensitivity = 2.0f;
-	static constexpr auto move_acceleration = 10.0f;
+	static constexpr auto move_acceleration = 40.0f;
 	static constexpr auto move_drag = 4.0f;
 	static constexpr auto yaw_speed = 3.49066f;
 	static constexpr auto pitch_speed = 3.49066f;

@@ -17,7 +17,7 @@
 class asset_manager final {
 public:
 	auto reload_shaders() -> void {
-		m_cubemap_converter.reload_shaders();
+		m_cubemap_generator.reload_shaders();
 	}
 
 	[[nodiscard]] auto load_font(const char* filename, unsigned int size) -> std::shared_ptr<font> {
@@ -89,7 +89,7 @@ public:
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load(filename_prefix, extension, cubemap_texture_options));
+		auto ptr = std::make_shared<cubemap>(cubemap::load(filename_prefix, extension));
 		it->second = ptr;
 		return ptr;
 	}
@@ -99,7 +99,7 @@ public:
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load_hdr(filename_prefix, extension, cubemap_texture_options));
+		auto ptr = std::make_shared<cubemap>(cubemap::load_hdr(filename_prefix, extension));
 		it->second = ptr;
 		return ptr;
 	}
@@ -109,7 +109,7 @@ public:
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular(m_cubemap_converter, filename, resolution, cubemap_texture_options));
+		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular(m_cubemap_generator, filename, resolution));
 		it->second = ptr;
 		return ptr;
 	}
@@ -119,7 +119,7 @@ public:
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular_hdr(m_cubemap_converter, filename, resolution, cubemap_texture_options));
+		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular_hdr(m_cubemap_generator, filename, resolution));
 		it->second = ptr;
 		return ptr;
 	}
@@ -180,13 +180,6 @@ private:
 		.use_mip_map = true,
 	};
 
-	static constexpr auto cubemap_texture_options = texture_options{
-		.max_anisotropy = 1.0f,
-		.repeat = false,
-		.use_linear_filtering = true,
-		.use_mip_map = false,
-	};
-
 	using font_cache = std::unordered_map<std::string, std::weak_ptr<font>>;
 	using image_cache = std::unordered_map<std::string, std::weak_ptr<image>>;
 	using texture_cache = std::unordered_map<std::string, std::weak_ptr<texture>>;
@@ -195,7 +188,7 @@ private:
 	using textured_model_cache = std::unordered_map<std::string, std::weak_ptr<textured_model>>;
 
 	font_library m_font_library{};
-	cubemap_converter m_cubemap_converter{};
+	cubemap_generator m_cubemap_generator{};
 	font_cache m_fonts{};
 	image_cache m_images{};
 	image_cache m_images_hdr{};

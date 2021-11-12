@@ -193,10 +193,6 @@ public:
 		, m_meshes(m_model->meshes())
 		, m_textures(std::move(textures)) {}
 
-	[[nodiscard]] auto original() const noexcept -> const std::shared_ptr<model>& {
-		return m_model;
-	}
-
 	[[nodiscard]] auto meshes() const noexcept -> std::span<const model_mesh> {
 		return m_meshes;
 	}
