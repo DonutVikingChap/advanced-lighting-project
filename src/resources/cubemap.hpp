@@ -88,6 +88,13 @@ public:
 	static constexpr auto irradiance_sample_delta_angle = 0.025f;
 	static constexpr auto prefilter_sample_count = 1024u;
 
+	static constexpr auto equirectangular_texture_options = texture_options{
+		.max_anisotropy = 1.0f,
+		.repeat = true,
+		.use_linear_filtering = true,
+		.use_mip_map = false,
+	};
+
 	static constexpr auto cubemap_texture_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
@@ -119,6 +126,10 @@ public:
 		glBindTexture(GL_TEXTURE_2D, equirectangular_texture.get());
 		auto result = texture::create_cubemap_uninitialized(internal_format, resolution, cubemap_texture_options);
 		m_equirectangular_shader.generate(result, 0, resolution);
+		if constexpr (cubemap_texture_options.use_mip_map) {
+			glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
+			glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		}
 		return result;
 	}
 
@@ -132,6 +143,10 @@ public:
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture.get());
 		auto result = texture::create_cubemap_uninitialized(internal_format, resolution, irradiance_map_texture_options);
 		m_irradiance_shader.generate(result, 0, resolution);
+		if constexpr (irradiance_map_texture_options.use_mip_map) {
+			glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
+			glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		}
 		return result;
 	}
 
@@ -150,6 +165,10 @@ public:
 			const auto roughness = static_cast<float>(mip) / static_cast<float>(mip_level_count - 1);
 			glUniform1f(m_prefilter_shader.roughness.location(), roughness);
 			m_prefilter_shader.generate(result, mip, mip_resolution);
+		}
+		if constexpr (prefilter_map_texture_options.use_mip_map) {
+			glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
+			glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 		}
 		return result;
 	}
@@ -185,7 +204,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver &&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;
@@ -327,7 +346,7 @@ public:
 		const auto internal_format = texture::internal_pixel_format_ldr(img.channel_count());
 		const auto format = texture::pixel_format(img.channel_count());
 		const auto equirectangular_texture = texture::create_2d(
-			internal_format, img.width(), img.height(), format, GL_UNSIGNED_BYTE, img.data(), cubemap_generator::cubemap_texture_options);
+			internal_format, img.width(), img.height(), format, GL_UNSIGNED_BYTE, img.data(), cubemap_generator::equirectangular_texture_options);
 		return cubemap{generator.generate_cubemap_from_equirectangular_2d(internal_format, equirectangular_texture, resolution)};
 	}
 
@@ -336,7 +355,7 @@ public:
 		const auto internal_format = texture::internal_pixel_format_hdr(img.channel_count());
 		const auto format = texture::pixel_format(img.channel_count());
 		const auto equirectangular_texture = texture::create_2d(
-			internal_format, img.width(), img.height(), format, GL_FLOAT, img.data(), cubemap_generator::cubemap_texture_options);
+			internal_format, img.width(), img.height(), format, GL_FLOAT, img.data(), cubemap_generator::equirectangular_texture_options);
 		return cubemap{generator.generate_cubemap_from_equirectangular_2d(internal_format, equirectangular_texture, resolution)};
 	}
 

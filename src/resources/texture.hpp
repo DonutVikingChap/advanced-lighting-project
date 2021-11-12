@@ -58,6 +58,9 @@ public:
 		glBindTexture(GL_TEXTURE_2D, result.get());
 		glTexImage2D(GL_TEXTURE_2D, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, format, type, pixels);
 		set_options(GL_TEXTURE_2D, options);
+		if (options.use_mip_map && pixels) {
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
 		return result;
 	}
 
@@ -73,6 +76,9 @@ public:
 		glBindTexture(GL_TEXTURE_2D_ARRAY, result.get());
 		glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), static_cast<GLsizei>(depth), 0, format, type, pixels);
 		set_options(GL_TEXTURE_2D_ARRAY, options);
+		if (options.use_mip_map && pixels) {
+			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+		}
 		return result;
 	}
 
@@ -93,6 +99,9 @@ public:
 			++target;
 		}
 		set_options(GL_TEXTURE_CUBE_MAP, options);
+		if (options.use_mip_map && pixels_px && pixels_nx && pixels_py && pixels_ny && pixels_pz && pixels_nz) {
+			glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		}
 		return result;
 	}
 
@@ -157,7 +166,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver &&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;
@@ -173,7 +182,6 @@ private:
 			glTexParameteri(target, GL_TEXTURE_WRAP_R, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
 		}
 		if (options.use_mip_map) {
-			glGenerateMipmap(target);
 			glTexParameteri(target, GL_TEXTURE_MIN_FILTER, (options.use_linear_filtering) ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR);
 			glTexParameteri(target, GL_TEXTURE_MAG_FILTER, (options.use_linear_filtering) ? GL_LINEAR : GL_NEAREST);
 		} else {
