@@ -59,6 +59,9 @@ public:
 		for (const auto& object : m_objects) {
 			renderer.model().draw_model(object.model, object.transform);
 		}
+		for (const auto& object : m_objects_with_alpha_test) {
+			renderer.model().draw_model_with_alpha_test(object.model, object.transform);
+		}
 	}
 
 	[[nodiscard]] auto controller() noexcept -> flight_controller& {
@@ -104,10 +107,6 @@ private:
 	std::vector<spot_light> m_spot_lights{};
 	std::vector<object> m_objects{
 		{
-			.model = m_asset_manager.load_textured_model("assets/models/sponza.obj", "assets/textures/"),
-			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
-		},
-		{
 			.model = m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
 		},
@@ -122,6 +121,12 @@ private:
 		{
 			.model = m_asset_manager.load_textured_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
+		},
+	};
+	std::vector<object> m_objects_with_alpha_test{
+		{
+			.model = m_asset_manager.load_textured_model("assets/models/sponza.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
 		},
 	};
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, 0.0f};

@@ -47,8 +47,15 @@ vec3 tonemap(vec3 color) {
 	return color / (color + vec3(1.0));
 }
 
-void main() {	
-	vec3 albedo = pow(texture(material_albedo, io_texture_coordinates).rgb, vec3(2.2)); // Convert from sRGB to linear.
+void main() {
+	vec4 albedo_sample = texture(material_albedo, io_texture_coordinates);
+#if USE_ALPHA_TEST
+	float alpha = albedo_sample.a;
+	if (alpha < 0.1) {
+		discard;
+	}
+#endif
+	vec3 albedo = pow(albedo_sample.rgb, vec3(2.2)); // Convert from sRGB to linear.
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
 	float metallic = texture(material_metallic, io_texture_coordinates).r;
 
