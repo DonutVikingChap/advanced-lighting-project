@@ -206,7 +206,7 @@ private:
 			glTexParameteri(target, GL_TEXTURE_WRAP_R, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
 		}
 		if (options.use_mip_map) {
-			glGenerateMipmap(GL_TEXTURE_2D);
+			glGenerateMipmap(target);
 			glTexParameteri(target, GL_TEXTURE_MIN_FILTER, (options.use_linear_filtering) ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_LINEAR);
 			glTexParameteri(target, GL_TEXTURE_MAG_FILTER, (options.use_linear_filtering) ? GL_LINEAR : GL_NEAREST);
 		} else {

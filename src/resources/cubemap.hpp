@@ -14,6 +14,7 @@
 #include <fmt/format.h>         // fmt::format
 #include <glm/glm.hpp>          // glm::perspective, glm::radians, glm::lookAt
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
+#include <memory>               // std::shared_ptr
 #include <stdexcept>            // std::runtime_error
 #include <string_view>          // std::string_view
 #include <tuple>                // std::tuple
@@ -102,20 +103,6 @@ public:
 		.use_mip_map = true,
 	};
 
-	static constexpr auto irradiance_map_texture_options = texture_options{
-		.max_anisotropy = 1.0f,
-		.repeat = false,
-		.use_linear_filtering = true,
-		.use_mip_map = false,
-	};
-
-	static constexpr auto prefilter_map_texture_options = texture_options{
-		.max_anisotropy = 1.0f,
-		.repeat = false,
-		.use_linear_filtering = true,
-		.use_mip_map = true,
-	};
-
 	auto generate_cubemap_from_equirectangular_2d(GLint internal_format, const texture& equirectangular_texture, std::size_t resolution) const -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
 		auto fbo = framebuffer{};
@@ -141,12 +128,9 @@ public:
 		glBindVertexArray(m_cubemap_mesh.get());
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture.get());
-		auto result = texture::create_cubemap_uninitialized(internal_format, resolution, irradiance_map_texture_options);
+		auto result = texture::create_cubemap_uninitialized(
+			internal_format, resolution, {.max_anisotropy = 1.0f, .repeat = false, .use_linear_filtering = true, .use_mip_map = false});
 		m_irradiance_shader.generate(result, 0, resolution);
-		if constexpr (irradiance_map_texture_options.use_mip_map) {
-			glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
-			glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-		}
 		return result;
 	}
 
@@ -159,16 +143,13 @@ public:
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap_texture.get());
 		glUniform1f(m_prefilter_shader.cubemap_resolution.location(), static_cast<float>(cubemap_texture.width()));
-		auto result = texture::create_cubemap_uninitialized(internal_format, resolution, prefilter_map_texture_options);
+		auto result = texture::create_cubemap_uninitialized(
+			internal_format, resolution, {.max_anisotropy = 1.0f, .repeat = false, .use_linear_filtering = true, .use_mip_map = true});
 		for (auto mip = std::size_t{0}; mip < mip_level_count; ++mip) {
 			const auto mip_resolution = static_cast<std::size_t>(static_cast<float>(resolution) * std::pow(0.5f, mip));
 			const auto roughness = static_cast<float>(mip) / static_cast<float>(mip_level_count - 1);
 			glUniform1f(m_prefilter_shader.roughness.location(), roughness);
 			m_prefilter_shader.generate(result, mip, mip_resolution);
-		}
-		if constexpr (prefilter_map_texture_options.use_mip_map) {
-			glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
-			glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 		}
 		return result;
 	}
@@ -244,6 +225,7 @@ private:
 			for (const auto& view_matrix : view_matrices) {
 				glUniformMatrix3fv(this->view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, result.get(), level);
+				opengl_context::check_status();
 				opengl_context::check_framebuffer_status();
 				glDrawArrays(cubemap_mesh::primitive_type, 0, static_cast<GLsizei>(cubemap_mesh::vertices.size()));
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, 0, level);
@@ -389,6 +371,42 @@ private:
 		: m_texture(std::move(texture)) {}
 
 	texture m_texture;
+};
+
+struct environment_cubemap_options final {
+	std::size_t irradiance_map_resolution = 32;
+	std::size_t prefilter_map_resolution = 128;
+	std::size_t prefilter_map_mip_level_count = 5;
+};
+
+class environment_cubemap final {
+public:
+	environment_cubemap(cubemap_generator& generator, std::shared_ptr<cubemap> environment, const environment_cubemap_options& options)
+		: m_environment_cubemap(std::move(environment))
+		, m_irradiance_cubemap(cubemap::generate_irradiance_map(generator, GL_RGB16F, *m_environment_cubemap, options.irradiance_map_resolution))
+		, m_prefilter_cubemap(
+			  cubemap::generate_prefilter_map(generator, GL_RGB16F, *m_environment_cubemap, options.prefilter_map_resolution, options.prefilter_map_mip_level_count)) {}
+
+	[[nodiscard]] auto original() const noexcept -> const std::shared_ptr<cubemap>& {
+		return m_environment_cubemap;
+	}
+
+	[[nodiscard]] auto environment_map() const noexcept -> GLuint {
+		return m_environment_cubemap->get();
+	}
+
+	[[nodiscard]] auto irradiance_map() const noexcept -> GLuint {
+		return m_irradiance_cubemap.get();
+	}
+
+	[[nodiscard]] auto prefilter_map() const noexcept -> GLuint {
+		return m_prefilter_cubemap.get();
+	}
+
+private:
+	std::shared_ptr<cubemap> m_environment_cubemap;
+	cubemap m_irradiance_cubemap;
+	cubemap m_prefilter_cubemap;
 };
 
 #endif

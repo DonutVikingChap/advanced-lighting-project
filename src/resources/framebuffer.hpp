@@ -38,4 +38,28 @@ private:
 	}()};
 };
 
+class renderbuffer final {
+public:
+	[[nodiscard]] auto get() const noexcept -> GLuint {
+		return m_rbo.get();
+	}
+
+private:
+	struct renderbuffer_deleter final {
+		auto operator()(GLuint p) const noexcept -> void {
+			glDeleteRenderbuffers(1, &p);
+		}
+	};
+	using renderbuffer_ptr = unique_handle<renderbuffer_deleter>;
+
+	renderbuffer_ptr m_rbo{[] {
+		auto rbo = GLuint{};
+		glGenRenderbuffers(1, &rbo);
+		if (rbo == 0) {
+			throw opengl_error{"Failed to create renderbuffer object!"};
+		}
+		return rbo;
+	}()};
+};
+
 #endif

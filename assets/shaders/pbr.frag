@@ -24,8 +24,10 @@ uniform sampler2D material_normal;
 uniform sampler2D material_roughness;
 uniform sampler2D material_metallic;
 
-uniform samplerCube cubemap_texture;
-//uniform sampler2D brdf_lut;
+uniform samplerCube environment_cubemap_texture;
+uniform samplerCube irradiance_cubemap_texture;
+uniform samplerCube prefilter_cubemap_texture;
+uniform sampler2D brdf_lookup_table_texture;
 
 uniform DirectionalLight directional_lights[DIRECTIONAL_LIGHT_COUNT];
 uniform PointLight point_lights[POINT_LIGHT_COUNT];
@@ -41,8 +43,12 @@ uniform sampler2DShadow spot_shadow_maps[SPOT_LIGHT_COUNT];
 
 uniform float cascade_levels_frustum_depths[CSM_CASCADE_COUNT];
 
+vec3 tonemap(vec3 color) {
+	return color / (color + vec3(1.0));
+}
+
 void main() {	
-	vec3 albedo = pow(texture(material_albedo, io_texture_coordinates).rgb, vec3(2.2)); //convert from sRGB to linear
+	vec3 albedo = pow(texture(material_albedo, io_texture_coordinates).rgb, vec3(2.2)); // Convert from sRGB to linear.
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
 	float metallic = texture(material_metallic, io_texture_coordinates).r;
 
@@ -57,24 +63,23 @@ void main() {
 	surface_normal = surface_normal * 2.0 - 1.0;
 	normal = normalize(TBN * surface_normal);
 
-	vec3 irradiance = vec3(0.03);//texture(irradiance_cubemap_texture, normal).rgb;
+	vec3 irradiance = texture(irradiance_cubemap_texture, normal).rgb;
 
 	vec3 view_direction = normalize(view_position - io_fragment_position);
+	vec3 reflect_direction = reflect(-view_direction, normal);
 	float n_dot_v = max(dot(normal, view_direction), 0.0);
 
 	vec3 ambient = vec3(0.0);
 	{
 		vec3 f = fresnel_schlick_roughness(n_dot_v, reflectivity, roughness);
-
-		vec3 k_d = vec3(1.0) - f;
-		vec3 diffuse = irradiance*albedo;
-		/*
+		vec3 k_s = f;
+		vec3 k_d = (vec3(1.0) - k_s) * (1.0 - metallic);
+		vec3 diffuse = k_d * irradiance * albedo;
 		float lod = roughness * MAX_REFLECTION_LOD;
-		vec3 cubemap_color = textureCubeLod(cubemap_texture, r, lod).rgb;
-		vec2 env_brdf = texture2D(brdf_lut, vec2(n_dot_v, roughness)).xy;
-		vec3 specular = cubemap_color * (f * env_brdf.x + env_brdf.y);
-		*/
-		ambient = k_d * diffuse;// + specular;
+		vec3 env_prefiltered_color = textureLod(prefilter_cubemap_texture, reflect_direction, lod).rgb;
+		vec2 env_brdf = texture(brdf_lookup_table_texture, vec2(n_dot_v, roughness)).rg;
+		vec3 specular = env_prefiltered_color * (f * env_brdf.r + env_brdf.g);
+		ambient = diffuse + specular;
 	}
 
 	vec3 Lo = vec3(0.0);
@@ -143,5 +148,5 @@ void main() {
 			reflectivity);
 	}
 
-	out_fragment_color = vec4(gamma_correct(Lo + ambient), 1.0);
+	out_fragment_color = vec4(gamma_correct(tonemap(Lo + ambient)), 1.0);
 }

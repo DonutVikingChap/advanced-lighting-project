@@ -1,7 +1,6 @@
 #ifndef ASSET_MANAGER_HPP
 #define ASSET_MANAGER_HPP
 
-#include "../resources/brdf.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/font.hpp"
 #include "../resources/image.hpp"
@@ -125,6 +124,22 @@ public:
 		return ptr;
 	}
 
+	[[nodiscard]] auto load_environment_cubemap(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<environment_cubemap> {
+		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap(filename_prefix, extension), default_environment_cubemap_options);
+	}
+
+	[[nodiscard]] auto load_environment_cubemap_hdr(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<environment_cubemap> {
+		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap_hdr(filename_prefix, extension), default_environment_cubemap_options);
+	}
+
+	[[nodiscard]] auto load_environment_cubemap_equirectangular(const char* filename, std::size_t resolution) -> std::shared_ptr<environment_cubemap> {
+		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap_equirectangular(filename, resolution), default_environment_cubemap_options);
+	}
+
+	[[nodiscard]] auto load_environment_cubemap_equirectangular_hdr(const char* filename, std::size_t resolution) -> std::shared_ptr<environment_cubemap> {
+		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap_equirectangular_hdr(filename, resolution), default_environment_cubemap_options);
+	}
+
 	[[nodiscard]] auto load_model(std::string filename) -> std::shared_ptr<model> {
 		const auto it = m_models.try_emplace(std::move(filename)).first;
 		if (auto ptr = it->second.lock()) {
@@ -181,6 +196,12 @@ private:
 		.use_mip_map = true,
 	};
 
+	static constexpr auto default_environment_cubemap_options = environment_cubemap_options{
+		.irradiance_map_resolution = 32,
+		.prefilter_map_resolution = 128,
+		.prefilter_map_mip_level_count = 5,
+	};
+
 	using font_cache = std::unordered_map<std::string, std::weak_ptr<font>>;
 	using image_cache = std::unordered_map<std::string, std::weak_ptr<image>>;
 	using texture_cache = std::unordered_map<std::string, std::weak_ptr<texture>>;
@@ -190,7 +211,6 @@ private:
 
 	font_library m_font_library{};
 	cubemap_generator m_cubemap_generator{};
-	texture m_brdf_lookup_table = brdf_generator{}.generate_lookup_table(GL_RG16F, 512);
 	font_cache m_fonts{};
 	image_cache m_images{};
 	image_cache m_images_hdr{};

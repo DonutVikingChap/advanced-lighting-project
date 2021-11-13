@@ -3,6 +3,7 @@
 
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
+#include "../resources/brdf.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/light.hpp"
 #include "../resources/model.hpp"
@@ -25,13 +26,17 @@ class rendering_pipeline;
 class model_renderer final {
 public:
 	static constexpr auto gamma = 2.2f;
+	static constexpr auto brdf_lookup_table_resolution = std::size_t{512};
 	static constexpr auto directional_light_count = std::size_t{1};
 	static constexpr auto point_light_count = std::size_t{4};
 	static constexpr auto spot_light_count = std::size_t{4};
 
 	static constexpr auto reserved_texture_units_begin = GLint{0};
-	static constexpr auto cubemap_texture_unit = GLint{reserved_texture_units_begin};
-	static constexpr auto directional_light_texture_units_begin = GLint{cubemap_texture_unit + 1};
+	static constexpr auto environment_cubemap_texture_unit = GLint{reserved_texture_units_begin};
+	static constexpr auto irradiance_cubemap_texture_unit = GLint{environment_cubemap_texture_unit + 1};
+	static constexpr auto prefilter_cubemap_texture_unit = GLint{irradiance_cubemap_texture_unit + 1};
+	static constexpr auto brdf_lookup_table_texture_unit = GLint{prefilter_cubemap_texture_unit + 1};
+	static constexpr auto directional_light_texture_units_begin = GLint{brdf_lookup_table_texture_unit + 1};
 	static constexpr auto point_light_texture_units_begin = GLint{directional_light_texture_units_begin + directional_light_count * 2};
 	static constexpr auto spot_light_texture_units_begin = GLint{point_light_texture_units_begin + point_light_count};
 	static constexpr auto reserved_texture_units_end = GLint{spot_light_texture_units_begin + spot_light_count};
@@ -40,8 +45,8 @@ public:
 		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
 	}
 
-	auto draw_cubemap(std::shared_ptr<cubemap> cubemap) -> void {
-		m_cubemap = std::move(cubemap);
+	auto draw_environment(std::shared_ptr<environment_cubemap> environment) -> void {
+		m_environment = std::move(environment);
 	}
 
 	auto draw_directional_light(const directional_light& light) -> void {
@@ -65,13 +70,27 @@ public:
 		glUniformMatrix4fv(m_model_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 		glUniform3fv(m_model_shader.view_position.location(), 1, glm::value_ptr(view_position));
 
-		// Upload cubemap.
-		if (m_cubemap) {
-			glActiveTexture(GL_TEXTURE0 + cubemap_texture_unit);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, m_cubemap->get());
-			glUniform1i(m_model_shader.cubemap_texture.location(), cubemap_texture_unit);
-			m_cubemap.reset();
+		// Upload environment maps.
+		if (m_environment) {
+			glActiveTexture(GL_TEXTURE0 + environment_cubemap_texture_unit);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->environment_map());
+			glUniform1i(m_model_shader.environment_cubemap_texture.location(), environment_cubemap_texture_unit);
+
+			glActiveTexture(GL_TEXTURE0 + irradiance_cubemap_texture_unit);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->irradiance_map());
+			glUniform1i(m_model_shader.irradiance_cubemap_texture.location(), irradiance_cubemap_texture_unit);
+
+			glActiveTexture(GL_TEXTURE0 + prefilter_cubemap_texture_unit);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->prefilter_map());
+			glUniform1i(m_model_shader.prefilter_cubemap_texture.location(), prefilter_cubemap_texture_unit);
+
+			m_environment.reset();
 		}
+
+		// Upload BRDF LUT texture.
+		glActiveTexture(GL_TEXTURE0 + brdf_lookup_table_texture_unit);
+		glBindTexture(GL_TEXTURE_2D, m_brdf_lookup_table.get());
+		glUniform1i(m_model_shader.brdf_lookup_table_texture.location(), brdf_lookup_table_texture_unit);
 
 		// Upload directional lights.
 		auto light_index = std::size_t{0};
@@ -258,7 +277,10 @@ private:
 		shader_uniform material_normal{program.get(), "material_normal"};
 		shader_uniform material_roughness{program.get(), "material_roughness"};
 		shader_uniform material_metallic{program.get(), "material_metallic"};
-		shader_uniform cubemap_texture{program.get(), "cubemap_texture"};
+		shader_uniform environment_cubemap_texture{program.get(), "environment_cubemap_texture"};
+		shader_uniform irradiance_cubemap_texture{program.get(), "irradiance_cubemap_texture"};
+		shader_uniform prefilter_cubemap_texture{program.get(), "prefilter_cubemap_texture"};
+		shader_uniform brdf_lookup_table_texture{program.get(), "brdf_lookup_table_texture"};
 		shader_array<directional_light_uniform, directional_light_count> directional_lights{program.get(), "directional_lights"};
 		shader_array<point_light_uniform, point_light_count> point_lights{program.get(), "point_lights"};
 		shader_array<spot_light_uniform, spot_light_count> spot_lights{program.get(), "spot_lights"};
@@ -284,7 +306,8 @@ private:
 	using model_instance_map = std::unordered_map<std::shared_ptr<textured_model>, std::vector<model_instance>>;
 
 	model_shader m_model_shader{};
-	std::shared_ptr<cubemap> m_cubemap{};
+	texture m_brdf_lookup_table = brdf_generator{}.generate_lookup_table(GL_RG16F, brdf_lookup_table_resolution);
+	std::shared_ptr<environment_cubemap> m_environment{};
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{};
 	std::vector<spot_light> m_spot_lights{};

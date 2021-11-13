@@ -73,17 +73,16 @@ vec3 pbr(
 	vec3 half_vector = normalize(light_direction + view_direction);
 	float n_dot_h = max(dot(normal, half_vector), 0.0);
 	float n_dot_l = max(dot(normal, light_direction), 0.0);
-	vec3 r = reflect(-view_direction, normal);
 
 	float d = distribution_ggx(n_dot_h, roughness);
 	vec3 f = fresnel_schlick(max(0.0, dot(half_vector, view_direction)), reflectivity);
 	float g = geometry_smith(n_dot_v, n_dot_l, roughness);
 
 	vec3 k_d = (vec3(1.0) - f) * (1.0 - metallic);
-	vec3 diffuse = albedo / pi;
+	vec3 diffuse = k_d * albedo / pi;
 	vec3 specular = d * f * g * (1.0 / (max(4.0 * n_dot_l * n_dot_v, specular_epsilon)));
 
-	return (k_d * diffuse + specular) * light_color * n_dot_l;
+	return (diffuse + specular) * light_color * n_dot_l;
 }
 
 #endif

@@ -36,8 +36,8 @@ public:
 	}
 
 	auto draw(rendering_pipeline& renderer) -> void {
-		renderer.skybox().draw_skybox(m_skybox);
-		renderer.model().draw_cubemap(m_skybox);
+		renderer.skybox().draw_skybox(m_sky->original());
+		renderer.model().draw_environment(m_sky);
 		if (renderer.gui().enabled() && !m_point_lights.empty()) {
 			ImGui::Begin("Light");
 			ImGui::SliderFloat3("Position", glm::value_ptr(m_point_lights[0].position), -50.0f, 50.0f);
@@ -91,7 +91,7 @@ private:
 	static constexpr auto pitch_speed = 3.49066f;
 
 	asset_manager& m_asset_manager;
-	std::shared_ptr<cubemap> m_skybox = m_asset_manager.load_cubemap_equirectangular_hdr("assets/textures/studio_country_hall_1k.hdr", 512);
+	std::shared_ptr<environment_cubemap> m_sky = m_asset_manager.load_environment_cubemap_equirectangular_hdr("assets/textures/studio_country_hall_1k_dark.hdr", 512);
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{
 		{

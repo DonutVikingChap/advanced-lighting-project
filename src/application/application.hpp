@@ -32,7 +32,7 @@ public:
 		.min_fps = 10,
 		.max_fps = 1200,
 		.v_sync = false,
-		.msaa_level = 0,
+		.msaa_level = 4,
 	};
 
 	static constexpr auto vertical_fov = 1.57079633f;
