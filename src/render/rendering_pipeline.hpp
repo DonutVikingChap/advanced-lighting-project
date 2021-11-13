@@ -26,7 +26,7 @@ public:
 		: m_gui_renderer(window, gl_context) {
 		glEnable(GL_CULL_FACE);
 
-		glEnable(GL_BLEND);
+		glDisable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ZERO);
 
 		glEnable(GL_DEPTH_TEST);

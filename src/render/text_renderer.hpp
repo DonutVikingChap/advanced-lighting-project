@@ -39,6 +39,7 @@ public:
 	auto render(passkey<rendering_pipeline>, const viewport& viewport) -> void {
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		glUseProgram(m_glyph_shader.program.get());
@@ -59,6 +60,7 @@ public:
 		m_text_instances.clear();
 
 		glBlendFunc(GL_ONE, GL_ZERO);
+		glDisable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
 	}

@@ -54,6 +54,8 @@ void main() {
 	if (alpha < 0.1) {
 		discard;
 	}
+#else
+	const float alpha = 0.0;
 #endif
 	vec3 albedo = pow(albedo_sample.rgb, vec3(2.2)); // Convert from sRGB to linear.
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
@@ -155,5 +157,5 @@ void main() {
 			reflectivity);
 	}
 
-	out_fragment_color = vec4(gamma_correct(tonemap(Lo + ambient)), 1.0);
+	out_fragment_color = vec4(gamma_correct(tonemap(Lo + ambient)), alpha);
 }

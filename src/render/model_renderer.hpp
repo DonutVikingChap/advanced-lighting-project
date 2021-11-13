@@ -10,11 +10,13 @@
 #include "../resources/shader.hpp"
 #include "../utilities/passkey.hpp"
 
+#include <algorithm>                  // std::ranges::sort
 #include <array>                      // std::array
 #include <cstddef>                    // std::size_t
 #include <glm/glm.hpp>                // glm::perspective
 #include <glm/gtc/matrix_inverse.hpp> // glm::inverseTranspose
 #include <glm/gtc/type_ptr.hpp>       // glm::value_ptr
+#include <glm/gtx/norm.hpp>           // glm::distance2
 #include <memory>                     // std::shared_ptr
 #include <span>                       // std::span
 #include <unordered_map>              // std::unordered_map
@@ -70,6 +72,12 @@ public:
 		m_model_instances_with_alpha_test[std::move(model)].emplace_back(transform);
 	}
 
+	auto draw_model_with_alpha_blending(const std::shared_ptr<textured_model>& model, const mat4& transform) -> void {
+		for (const auto& mesh : model->meshes()) {
+			m_mesh_instances_with_alpha_blending.emplace_back(model, mesh, transform);
+		}
+	}
+
 	auto render(passkey<rendering_pipeline>, const mat4& view_matrix, vec3 view_position) -> void {
 		glUseProgram(m_model_shader.program.get());
 		upload_uniform_frame_data(m_model_shader, view_matrix, view_position);
@@ -78,6 +86,16 @@ public:
 		glUseProgram(m_model_shader_with_alpha_test.program.get());
 		upload_uniform_frame_data(m_model_shader_with_alpha_test, view_matrix, view_position);
 		render_models(m_model_shader_with_alpha_test, m_model_instances_with_alpha_test);
+
+		for (auto& [model, mesh, transform, depth] : m_mesh_instances_with_alpha_blending) {
+			depth = glm::distance2(view_position, vec3{transform[3]});
+		}
+		std::ranges::sort(m_mesh_instances_with_alpha_blending, [](const auto& lhs, const auto& rhs) { return lhs.depth > rhs.depth; });
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		render_meshes(m_model_shader_with_alpha_test, m_mesh_instances_with_alpha_blending);
+		glBlendFunc(GL_ONE, GL_ZERO);
+		glDisable(GL_BLEND);
 
 		clear_frame_data();
 	}
@@ -161,6 +179,20 @@ private:
 	};
 
 	using model_instance_map = std::unordered_map<std::shared_ptr<textured_model>, std::vector<model_instance>>;
+
+	struct mesh_instance final {
+		explicit mesh_instance(std::shared_ptr<textured_model> model, const model_mesh& mesh, const mat4& transform) noexcept
+			: model(std::move(model))
+			, mesh(&mesh)
+			, transform(transform) {}
+
+		std::shared_ptr<textured_model> model;
+		const model_mesh* mesh;
+		mat4 transform;
+		float depth = 0.0f;
+	};
+
+	using mesh_instance_list = std::vector<mesh_instance>;
 
 	auto upload_uniform_frame_data(model_shader& shader, const mat4& view_matrix, vec3 view_position) const -> void {
 		// Upload view matrix and position.
@@ -318,6 +350,30 @@ private:
 		}
 	}
 
+	auto render_meshes(model_shader& shader, const mesh_instance_list& meshes) const -> void {
+		for (const auto& [model, mesh, transform, depth] : meshes) {
+			const auto model_texture_units_begin = reserved_texture_units_end;
+			auto i = 0;
+			for (const auto& texture : model->textures()) {
+				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
+				glBindTexture(GL_TEXTURE_2D, texture->get());
+				++i;
+			}
+			glBindVertexArray(mesh->get());
+			const auto& material = mesh->material();
+			glUniform1i(shader.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
+			glUniform1i(shader.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
+			glUniform1i(shader.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
+			glUniform1i(shader.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
+
+			const auto& model_matrix = transform;
+			const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
+			glUniformMatrix4fv(shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+			glUniformMatrix3fv(shader.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
+			glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh->index_count()), model_mesh::index_type, nullptr);
+		}
+	}
+
 	auto clear_frame_data() -> void {
 		m_environment.reset();
 		m_directional_lights.clear();
@@ -325,6 +381,7 @@ private:
 		m_spot_lights.clear();
 		m_model_instances.clear();
 		m_model_instances_with_alpha_test.clear();
+		m_mesh_instances_with_alpha_blending.clear();
 	}
 
 	model_shader m_model_shader{false};
@@ -336,6 +393,7 @@ private:
 	std::vector<spot_light> m_spot_lights{};
 	model_instance_map m_model_instances{};
 	model_instance_map m_model_instances_with_alpha_test{};
+	mesh_instance_list m_mesh_instances_with_alpha_blending{};
 };
 
 #endif
