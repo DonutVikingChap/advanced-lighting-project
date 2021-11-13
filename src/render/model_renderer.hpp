@@ -100,7 +100,6 @@ public:
 			}
 			auto& light_uniform = m_model_shader.directional_lights[light_index];
 			glUniform3fv(light_uniform.direction.location(), 1, glm::value_ptr(light.direction));
-			glUniform3fv(light_uniform.ambient.location(), 1, glm::value_ptr(light.ambient));
 			glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
 			if (light.shadow_map && light.depth_map) {
 				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
@@ -139,7 +138,6 @@ public:
 			}
 			auto& light_uniform = m_model_shader.point_lights[light_index];
 			glUniform3fv(light_uniform.position.location(), 1, glm::value_ptr(light.position));
-			glUniform3fv(light_uniform.ambient.location(), 1, glm::value_ptr(light.ambient));
 			glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
 			glUniform1f(light_uniform.constant.location(), light.constant);
 			glUniform1f(light_uniform.linear.location(), light.linear);
@@ -173,7 +171,6 @@ public:
 			auto& light_uniform = m_model_shader.spot_lights[light_index];
 			glUniform3fv(light_uniform.position.location(), 1, glm::value_ptr(light.position));
 			glUniform3fv(light_uniform.direction.location(), 1, glm::value_ptr(light.direction));
-			glUniform3fv(light_uniform.ambient.location(), 1, glm::value_ptr(light.ambient));
 			glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
 			glUniform1f(light_uniform.constant.location(), light.constant);
 			glUniform1f(light_uniform.linear.location(), light.linear);
