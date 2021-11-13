@@ -1,6 +1,7 @@
 #ifndef ASSET_MANAGER_HPP
 #define ASSET_MANAGER_HPP
 
+#include "../resources/brdf.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/font.hpp"
 #include "../resources/image.hpp"
@@ -189,6 +190,7 @@ private:
 
 	font_library m_font_library{};
 	cubemap_generator m_cubemap_generator{};
+	texture m_brdf_lookup_table = brdf_generator{}.generate_lookup_table(GL_RG16F, 512);
 	font_cache m_fonts{};
 	image_cache m_images{};
 	image_cache m_images_hdr{};

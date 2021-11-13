@@ -40,7 +40,7 @@ public:
 		renderer.model().draw_cubemap(m_skybox);
 		if (renderer.gui().enabled() && !m_point_lights.empty()) {
 			ImGui::Begin("Light");
-			ImGui::SliderFloat3("Position", glm::value_ptr(m_point_lights[0].position), -10.0f, 10.0f);
+			ImGui::SliderFloat3("Position", glm::value_ptr(m_point_lights[0].position), -50.0f, 50.0f);
 			ImGui::SliderFloat3("Ambient", glm::value_ptr(m_point_lights[0].ambient), 0.0f, 1.0f);
 			ImGui::SliderFloat3("Color", glm::value_ptr(m_point_lights[0].color), 0.0f, 5.0f);
 			ImGui::SliderFloat("Constant", &m_point_lights[0].constant, 0.0f, 1.0f);

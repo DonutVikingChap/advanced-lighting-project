@@ -7,6 +7,7 @@
 #include <cstddef>      // std::byte, std::size_t
 #include <fmt/format.h> // fmt::format
 #include <stdexcept>    // std::invalid_argument
+#include <vector>       // std::vector
 
 struct texture_options final {
 	float max_anisotropy = 1.0f;
@@ -17,6 +18,17 @@ struct texture_options final {
 
 class texture final {
 public:
+	[[nodiscard]] static auto channel_count(GLenum format) -> std::size_t {
+		switch (format) {
+			case GL_RED: return 1;
+			case GL_RG: return 2;
+			case GL_RGB: return 3;
+			case GL_RGBA: return 4;
+			default: break;
+		}
+		throw std::invalid_argument{fmt::format("Invalid texture format \"{}\"!", format)};
+	}
+
 	[[nodiscard]] static auto pixel_format(std::size_t channel_count) -> GLenum {
 		switch (channel_count) {
 			case 1: return GL_RED;
@@ -124,6 +136,24 @@ public:
 			pixels);
 	}
 
+	[[nodiscard]] auto read_pixels_2d(GLenum format) const -> std::vector<std::byte> {
+		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glBindTexture(GL_TEXTURE_2D, m_texture.get());
+		auto result = std::vector<std::byte>(m_width * m_height * channel_count(format));
+		glGetTexImage(GL_TEXTURE_2D, 0, format, GL_UNSIGNED_BYTE, result.data());
+		return result;
+	}
+
+	[[nodiscard]] auto read_pixels_2d_hdr(GLenum format) const -> std::vector<float> {
+		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glBindTexture(GL_TEXTURE_2D, m_texture.get());
+		auto result = std::vector<float>(m_width * m_height * channel_count(format));
+		glGetTexImage(GL_TEXTURE_2D, 0, format, GL_FLOAT, result.data());
+		return result;
+	}
+
 	[[nodiscard]] auto width() const noexcept -> std::size_t {
 		return m_width;
 	}
@@ -145,6 +175,7 @@ private:
 	public:
 		[[nodiscard]] state_preserver(GLenum texture_target, GLenum texture_target_binding) noexcept
 			: m_texture_target(texture_target) {
+			glGetIntegerv(GL_PACK_ALIGNMENT, &m_pack_alignment);
 			glGetIntegerv(GL_UNPACK_ALIGNMENT, &m_unpack_alignment);
 			glGetIntegerv(texture_target_binding, &m_texture);
 		}
@@ -152,6 +183,7 @@ private:
 		~state_preserver() {
 			glBindTexture(m_texture_target, m_texture);
 			glPixelStorei(GL_UNPACK_ALIGNMENT, m_unpack_alignment);
+			glPixelStorei(GL_PACK_ALIGNMENT, m_pack_alignment);
 		}
 
 		state_preserver(const state_preserver&) = delete;
@@ -161,6 +193,7 @@ private:
 
 	private:
 		GLenum m_texture_target;
+		GLint m_pack_alignment = 0;
 		GLint m_unpack_alignment = 0;
 		GLint m_texture = 0;
 	};

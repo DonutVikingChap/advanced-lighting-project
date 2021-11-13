@@ -42,14 +42,17 @@ float geometry_schlick_ggx(float n_dot_x, float k) {
 }
 
 float geometry_smith(float n_dot_v, float n_dot_l, float a) {
-	float k = pow(a + 1.0, 2.0) / 8.0;
-	float ggx_1 = geometry_schlick_ggx(n_dot_v, k);
-	float ggx_2 = geometry_schlick_ggx(n_dot_l, k);
-	return ggx_1 * ggx_2;
+	float k = square(a + 1.0) * 0.125;
+	return geometry_schlick_ggx(n_dot_v, k) * geometry_schlick_ggx(n_dot_l, k);
+}
+
+float geometry_smith_v2(float n_dot_v, float n_dot_l, float a) {
+	float k = square(a) * 0.5;
+	return geometry_schlick_ggx(n_dot_v, k) * geometry_schlick_ggx(n_dot_l, k);
 }
 
 vec3 fresnel_schlick(float n_dot_l, vec3 f_0) {
-	return f_0 + (1.0 - f_0) * pow(clamp(1.0 - n_dot_l, 0.0, 1.0), 5.0);;
+	return f_0 + (1.0 - f_0) * pow(clamp(1.0 - n_dot_l, 0.0, 1.0), 5.0);
 }
 
 vec3 fresnel_schlick_roughness(float n_dot_l, vec3 f_0, float roughness) {

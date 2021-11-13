@@ -186,7 +186,7 @@ private:
 			: m_texture_target(texture_target) {
 			glGetIntegerv(GL_FRAMEBUFFER_BINDING, &m_framebuffer_binding);
 			glGetIntegerv(GL_VIEWPORT, m_viewport.data());
-			glGetIntegerv(GL_ACTIVE_PROGRAM, &m_active_program);
+			glGetIntegerv(GL_CURRENT_PROGRAM, &m_current_program);
 			glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &m_vertex_array_binding);
 			glGetIntegerv(GL_ACTIVE_TEXTURE, &m_active_texture);
 			glGetIntegerv(texture_target_binding, &m_texture_binding);
@@ -196,7 +196,7 @@ private:
 			glBindTexture(m_texture_target, m_texture_binding);
 			glActiveTexture(m_active_texture);
 			glBindVertexArray(m_vertex_array_binding);
-			glUseProgram(m_active_program);
+			glUseProgram(m_current_program);
 			glViewport(m_viewport[0], m_viewport[1], m_viewport[2], m_viewport[3]);
 			glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer_binding);
 		}
@@ -210,7 +210,7 @@ private:
 		GLenum m_texture_target;
 		GLint m_framebuffer_binding = 0;
 		std::array<GLint, 4> m_viewport{};
-		GLint m_active_program = 0;
+		GLint m_current_program = 0;
 		GLint m_vertex_array_binding = 0;
 		GLint m_active_texture = 0;
 		GLint m_texture_binding = 0;
