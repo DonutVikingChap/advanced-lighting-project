@@ -49,13 +49,15 @@ vec3 tonemap(vec3 color) {
 
 void main() {
 	vec4 albedo_sample = texture(material_albedo, io_texture_coordinates);
-#if USE_ALPHA_TEST
+#if USE_ALPHA_BLENDING
 	float alpha = albedo_sample.a;
-	if (alpha < 0.1) {
+#else
+	const float alpha = 1.0;
+#endif
+#if USE_ALPHA_TEST
+	if (albedo_sample.a < 0.1) {
 		discard;
 	}
-#else
-	const float alpha = 0.0;
 #endif
 	vec3 albedo = pow(albedo_sample.rgb, vec3(2.2)); // Convert from sRGB to linear.
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
@@ -66,16 +68,13 @@ void main() {
 	vec3 normal = normalize(io_normal);
 	vec3 tangent = normalize(io_tangent);
 	vec3 bitangent = normalize(io_bitangent);
-	mat3 TBN = mat3(io_tangent, io_tangent, io_normal);
-
-	vec3 surface_normal = texture(material_normal, io_texture_coordinates).rgb;
-	surface_normal = surface_normal * 2.0 - 1.0;
+	mat3 TBN = mat3(tangent, bitangent, normal);
+	vec3 surface_normal = texture(material_normal, io_texture_coordinates).xyz * 2.0 - 1.0;
 	normal = normalize(TBN * surface_normal);
 
 	vec3 irradiance = texture(irradiance_cubemap_texture, normal).rgb;
 
 	vec3 view_direction = normalize(view_position - io_fragment_position);
-	vec3 reflect_direction = reflect(-view_direction, normal);
 	float n_dot_v = max(dot(normal, view_direction), 0.0);
 
 	vec3 ambient = vec3(0.0);
@@ -85,7 +84,7 @@ void main() {
 		vec3 k_d = (vec3(1.0) - k_s) * (1.0 - metallic);
 		vec3 diffuse = k_d * irradiance * albedo;
 		float lod = roughness * MAX_REFLECTION_LOD;
-		vec3 env_prefiltered_color = textureLod(prefilter_cubemap_texture, reflect_direction, lod).rgb;
+		vec3 env_prefiltered_color = textureLod(prefilter_cubemap_texture, reflect(-view_direction, normal), lod).rgb;
 		vec2 env_brdf = texture(brdf_lookup_table_texture, vec2(n_dot_v, roughness)).rg;
 		vec3 specular = env_prefiltered_color * (f * env_brdf.r + env_brdf.g);
 		ambient = diffuse + specular;

@@ -1,0 +1,16 @@
+# Blender MTL File: 'tea_set_01_1k.blend'
+# Material Count: 1
+
+newmtl tea_set_01
+Ns 673.402515
+Ka 1.000000 1.000000 1.000000
+Kd 0.780768 0.780768 0.780768
+Ks 0.290000 0.290000 0.290000
+Ke 0.0 0.0 0.0
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd tea_set_01_diff_1k.jpg
+map_Kn tea_set_01_nor_gl_1k.png
+map_Ks tea_set_01_rough_1k.png
+map_Ns tea_set_01_metal_1k.png

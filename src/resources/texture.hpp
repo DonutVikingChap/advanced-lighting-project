@@ -29,6 +29,25 @@ public:
 		throw std::invalid_argument{fmt::format("Invalid texture format \"{}\"!", format)};
 	}
 
+	[[nodiscard]] static auto internal_channel_count(GLint internal_format) -> std::size_t {
+		switch (internal_format) {
+			case GL_R8: [[fallthrough]];
+			case GL_R16F: [[fallthrough]];
+			case GL_R32F: return 1;
+			case GL_RG8: [[fallthrough]];
+			case GL_RG16F: [[fallthrough]];
+			case GL_RG32F: return 2;
+			case GL_RGB8: [[fallthrough]];
+			case GL_RGB16F: [[fallthrough]];
+			case GL_RGB32F: return 3;
+			case GL_RGBA8: [[fallthrough]];
+			case GL_RGBA16F: [[fallthrough]];
+			case GL_RGBA32F: return 4;
+			default: break;
+		}
+		throw std::invalid_argument{fmt::format("Invalid internal texture format \"{}\"!", internal_format)};
+	}
+
 	[[nodiscard]] static auto pixel_format(std::size_t channel_count) -> GLenum {
 		switch (channel_count) {
 			case 1: return GL_RED;
@@ -65,7 +84,7 @@ public:
 	[[nodiscard]] static auto create_2d(
 		GLint internal_format, std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels, const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
-		auto result = texture{width, height};
+		auto result = texture{internal_format, width, height};
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glBindTexture(GL_TEXTURE_2D, result.get());
 		glTexImage2D(GL_TEXTURE_2D, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, format, type, pixels);
@@ -80,7 +99,7 @@ public:
 	[[nodiscard]] static auto create_2d_array(GLint internal_format, std::size_t width, std::size_t height, std::size_t depth, GLenum format, GLenum type, const void* pixels,
 		const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BINDING_2D_ARRAY};
-		auto result = texture{width, height};
+		auto result = texture{internal_format, width, height};
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glBindTexture(GL_TEXTURE_2D_ARRAY, result.get());
 		glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, internal_format, static_cast<GLsizei>(width), static_cast<GLsizei>(height), static_cast<GLsizei>(depth), 0, format, type, pixels);
@@ -96,12 +115,12 @@ public:
 	[[nodiscard]] static auto create_cubemap(GLint internal_format, std::size_t resolution, GLenum format, GLenum type, const void* pixels_px, const void* pixels_nx,
 		const void* pixels_py, const void* pixels_ny, const void* pixels_pz, const void* pixels_nz, const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
-		auto result = texture{resolution, resolution};
+		auto result = texture{internal_format, resolution, resolution};
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, result.get());
 		auto target = GLenum{GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 		for (const auto* const pixels : {pixels_px, pixels_nx, pixels_py, pixels_ny, pixels_pz, pixels_nz}) {
-			glTexImage2D(target, 0, internal_format, resolution, resolution, 0, format, type, pixels);
+			glTexImage2D(target, 0, internal_format, static_cast<GLint>(resolution), static_cast<GLint>(resolution), 0, format, type, pixels);
 			++target;
 		}
 		set_options(GL_TEXTURE_CUBE_MAP, options);
@@ -154,6 +173,10 @@ public:
 		return result;
 	}
 
+	[[nodiscard]] auto internal_format() const noexcept -> GLint {
+		return m_internal_format;
+	}
+
 	[[nodiscard]] auto width() const noexcept -> std::size_t {
 		return m_width;
 	}
@@ -167,8 +190,9 @@ public:
 	}
 
 private:
-	texture(std::size_t width, std::size_t height)
-		: m_width(width)
+	texture(GLint internal_format, std::size_t width, std::size_t height)
+		: m_internal_format(internal_format)
+		, m_width(width)
 		, m_height(height) {}
 
 	class state_preserver final {
@@ -232,6 +256,7 @@ private:
 		}
 		return tex;
 	}()};
+	GLint m_internal_format;
 	std::size_t m_width;
 	std::size_t m_height;
 };

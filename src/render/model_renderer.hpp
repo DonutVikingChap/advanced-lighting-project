@@ -44,8 +44,11 @@ public:
 	static constexpr auto reserved_texture_units_end = GLint{spot_light_texture_units_begin + spot_light_count};
 
 	auto resize(passkey<rendering_pipeline>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
-		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
-		m_model_shader_with_alpha_test.resize(width, height, vertical_fov, near_z, far_z);
+		const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+		const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
+		m_model_shader.upload_projection_matrix(projection_matrix);
+		m_model_shader_with_alpha_test.upload_projection_matrix(projection_matrix);
+		m_model_shader_with_alpha_blending.upload_projection_matrix(projection_matrix);
 	}
 
 	auto draw_environment(std::shared_ptr<environment_cubemap> environment) -> void {
@@ -64,52 +67,129 @@ public:
 		m_spot_lights.push_back(light);
 	}
 
-	auto draw_model(std::shared_ptr<textured_model> model, const mat4& transform) -> void {
+	auto draw_model(std::shared_ptr<model> model, const mat4& transform) -> void {
 		m_model_instances[std::move(model)].emplace_back(transform);
 	}
 
-	auto draw_model_with_alpha_test(std::shared_ptr<textured_model> model, const mat4& transform) -> void {
-		m_model_instances_with_alpha_test[std::move(model)].emplace_back(transform);
-	}
-
-	auto draw_model_with_alpha_blending(const std::shared_ptr<textured_model>& model, const mat4& transform) -> void {
-		for (const auto& mesh : model->meshes()) {
-			m_mesh_instances_with_alpha_blending.emplace_back(model, mesh, transform);
-		}
-	}
-
 	auto render(passkey<rendering_pipeline>, const mat4& view_matrix, vec3 view_position) -> void {
+		// Render meshes without alpha.
 		glUseProgram(m_model_shader.program.get());
 		upload_uniform_frame_data(m_model_shader, view_matrix, view_position);
-		render_models(m_model_shader, m_model_instances);
+		for (const auto& [model, instances] : m_model_instances) {
+			const auto model_texture_units_begin = reserved_texture_units_end;
+			auto i = 0;
+			for (const auto& texture : model->textures()) {
+				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
+				glBindTexture(GL_TEXTURE_2D, texture->get());
+				++i;
+			}
+			for (const auto& mesh : model->meshes()) {
+				const auto& material = mesh.material();
+				if (material.alpha_test || material.alpha_blending) {
+					continue;
+				}
+				glBindVertexArray(mesh.get());
+				glUniform1i(m_model_shader.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
+				glUniform1i(m_model_shader.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
+				glUniform1i(m_model_shader.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
+				glUniform1i(m_model_shader.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
+				for (const auto& instance : instances) {
+					const auto& model_matrix = instance.transform;
+					const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
+					glUniformMatrix4fv(m_model_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+					glUniformMatrix3fv(m_model_shader.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
+					glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.index_count()), model_mesh::index_type, nullptr);
+				}
+			}
+		}
 
+		// Render meshes with alpha.
 		glUseProgram(m_model_shader_with_alpha_test.program.get());
 		upload_uniform_frame_data(m_model_shader_with_alpha_test, view_matrix, view_position);
-		render_models(m_model_shader_with_alpha_test, m_model_instances_with_alpha_test);
-
-		for (auto& [model, mesh, transform, depth] : m_mesh_instances_with_alpha_blending) {
-			depth = glm::distance2(view_position, vec3{transform[3]});
+		for (const auto& [model, instances] : m_model_instances) {
+			const auto model_texture_units_begin = reserved_texture_units_end;
+			auto i = 0;
+			for (const auto& texture : model->textures()) {
+				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
+				glBindTexture(GL_TEXTURE_2D, texture->get());
+				++i;
+			}
+			for (const auto& mesh : model->meshes()) {
+				const auto& material = mesh.material();
+				if (material.alpha_blending) {
+					for (const auto& instance : instances) {
+						const auto depth = glm::distance2(view_position, vec3{instance.transform[3]});
+						m_alpha_blended_mesh_instances.emplace_back(model, mesh, instance.transform, depth);
+					}
+				} else if (material.alpha_test) {
+					glBindVertexArray(mesh.get());
+					glUniform1i(m_model_shader_with_alpha_test.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
+					glUniform1i(m_model_shader_with_alpha_test.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
+					glUniform1i(m_model_shader_with_alpha_test.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
+					glUniform1i(m_model_shader_with_alpha_test.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
+					for (const auto& instance : instances) {
+						const auto& model_matrix = instance.transform;
+						const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
+						glUniformMatrix4fv(m_model_shader_with_alpha_test.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+						glUniformMatrix3fv(m_model_shader_with_alpha_test.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
+						glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.index_count()), model_mesh::index_type, nullptr);
+					}
+				}
+			}
 		}
-		std::ranges::sort(m_mesh_instances_with_alpha_blending, [](const auto& lhs, const auto& rhs) { return lhs.depth > rhs.depth; });
+
+		// Render alpha blended mesh instances back-to-front.
+		std::ranges::sort(m_alpha_blended_mesh_instances, [](const auto& lhs, const auto& rhs) { return lhs.depth > rhs.depth; });
+		glUseProgram(m_model_shader_with_alpha_blending.program.get());
+		upload_uniform_frame_data(m_model_shader_with_alpha_blending, view_matrix, view_position);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		render_meshes(m_model_shader_with_alpha_test, m_mesh_instances_with_alpha_blending);
+		for (const auto& [model, mesh, transform, depth] : m_alpha_blended_mesh_instances) {
+			const auto model_texture_units_begin = reserved_texture_units_end;
+			auto i = 0;
+			for (const auto& texture : model->textures()) {
+				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
+				glBindTexture(GL_TEXTURE_2D, texture->get());
+				++i;
+			}
+			glBindVertexArray(mesh->get());
+			const auto& material = mesh->material();
+			glUniform1i(m_model_shader_with_alpha_test.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
+			glUniform1i(m_model_shader_with_alpha_test.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
+			glUniform1i(m_model_shader_with_alpha_test.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
+			glUniform1i(m_model_shader_with_alpha_test.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
+
+			const auto& model_matrix = transform;
+			const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
+			glUniformMatrix4fv(m_model_shader_with_alpha_test.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+			glUniformMatrix3fv(m_model_shader_with_alpha_test.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
+			glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh->index_count()), model_mesh::index_type, nullptr);
+		}
 		glBlendFunc(GL_ONE, GL_ZERO);
 		glDisable(GL_BLEND);
 
-		clear_frame_data();
+		m_environment.reset();
+		m_directional_lights.clear();
+		m_point_lights.clear();
+		m_spot_lights.clear();
+		m_model_instances.clear();
+		m_alpha_blended_mesh_instances.clear();
 	}
 
 	auto reload_shaders(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
-		m_model_shader = model_shader{false};
-		m_model_shader.resize(width, height, vertical_fov, near_z, far_z);
-		m_model_shader_with_alpha_test = model_shader{true};
-		m_model_shader_with_alpha_test.resize(width, height, vertical_fov, near_z, far_z);
+		const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+		const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
+		m_model_shader = model_shader{false, false};
+		m_model_shader.upload_projection_matrix(projection_matrix);
+		m_model_shader_with_alpha_test = model_shader{true, false};
+		m_model_shader_with_alpha_test.upload_projection_matrix(projection_matrix);
+		m_model_shader_with_alpha_blending = model_shader{false, true};
+		m_model_shader_with_alpha_blending.upload_projection_matrix(projection_matrix);
 	}
 
 private:
 	struct model_shader final {
-		explicit model_shader(bool use_alpha_test)
+		model_shader(bool use_alpha_test, bool use_alpha_blending)
 			: program({
 				  .vertex_shader_filename = "assets/shaders/pbr.vert",
 				  .fragment_shader_filename = "assets/shaders/pbr.frag",
@@ -121,6 +201,7 @@ private:
 						  {"SPOT_LIGHT_COUNT", spot_light_count},
 						  {"CSM_CASCADE_COUNT", directional_light::csm_cascade_count},
 						  {"USE_ALPHA_TEST", (use_alpha_test) ? 1 : 0},
+						  {"USE_ALPHA_BLENDING", (use_alpha_blending) ? 1 : 0},
 					  },
 			  }) {
 			glUseProgram(program.get());
@@ -135,9 +216,7 @@ private:
 			}
 		}
 
-		auto resize(int width, int height, float vertical_fov, float near_z, float far_z) -> void { // NOLINT(readability-make-member-function-const)
-			const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
-			const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
+		auto upload_projection_matrix(const mat4& projection_matrix) const -> void {
 			glUseProgram(program.get());
 			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 		}
@@ -178,21 +257,22 @@ private:
 		mat4 transform;
 	};
 
-	using model_instance_map = std::unordered_map<std::shared_ptr<textured_model>, std::vector<model_instance>>;
+	using model_instance_map = std::unordered_map<std::shared_ptr<model>, std::vector<model_instance>>;
 
-	struct mesh_instance final {
-		explicit mesh_instance(std::shared_ptr<textured_model> model, const model_mesh& mesh, const mat4& transform) noexcept
+	struct alpha_blended_mesh_instance final {
+		explicit alpha_blended_mesh_instance(std::shared_ptr<model> model, const model_mesh& mesh, const mat4& transform, float depth) noexcept
 			: model(std::move(model))
 			, mesh(&mesh)
-			, transform(transform) {}
+			, transform(transform)
+			, depth(depth) {}
 
-		std::shared_ptr<textured_model> model;
+		std::shared_ptr<model> model;
 		const model_mesh* mesh;
 		mat4 transform;
-		float depth = 0.0f;
+		float depth;
 	};
 
-	using mesh_instance_list = std::vector<mesh_instance>;
+	using alpha_blended_mesh_instance_list = std::vector<alpha_blended_mesh_instance>;
 
 	auto upload_uniform_frame_data(model_shader& shader, const mat4& view_matrix, vec3 view_position) const -> void {
 		// Upload view matrix and position.
@@ -323,77 +403,16 @@ private:
 		}
 	}
 
-	auto render_models(model_shader& shader, const model_instance_map& model_instances) const -> void {
-		for (const auto& [model, instances] : model_instances) {
-			const auto model_texture_units_begin = reserved_texture_units_end;
-			auto i = 0;
-			for (const auto& texture : model->textures()) {
-				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
-				glBindTexture(GL_TEXTURE_2D, texture->get());
-				++i;
-			}
-			for (const auto& mesh : model->meshes()) {
-				glBindVertexArray(mesh.get());
-				const auto& material = mesh.material();
-				glUniform1i(shader.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
-				glUniform1i(shader.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
-				glUniform1i(shader.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
-				glUniform1i(shader.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
-				for (const auto& instance : instances) {
-					const auto& model_matrix = instance.transform;
-					const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
-					glUniformMatrix4fv(shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
-					glUniformMatrix3fv(shader.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
-					glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.index_count()), model_mesh::index_type, nullptr);
-				}
-			}
-		}
-	}
-
-	auto render_meshes(model_shader& shader, const mesh_instance_list& meshes) const -> void {
-		for (const auto& [model, mesh, transform, depth] : meshes) {
-			const auto model_texture_units_begin = reserved_texture_units_end;
-			auto i = 0;
-			for (const auto& texture : model->textures()) {
-				glActiveTexture(GL_TEXTURE0 + model_texture_units_begin + i);
-				glBindTexture(GL_TEXTURE_2D, texture->get());
-				++i;
-			}
-			glBindVertexArray(mesh->get());
-			const auto& material = mesh->material();
-			glUniform1i(shader.material_albedo.location(), static_cast<GLint>(model_texture_units_begin + material.albedo_texture_offset));
-			glUniform1i(shader.material_normal.location(), static_cast<GLint>(model_texture_units_begin + material.normal_texture_offset));
-			glUniform1i(shader.material_roughness.location(), static_cast<GLint>(model_texture_units_begin + material.roughness_texture_offset));
-			glUniform1i(shader.material_metallic.location(), static_cast<GLint>(model_texture_units_begin + material.metallic_texture_offset));
-
-			const auto& model_matrix = transform;
-			const auto normal_matrix = glm::inverseTranspose(mat3{model_matrix});
-			glUniformMatrix4fv(shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
-			glUniformMatrix3fv(shader.normal_matrix.location(), 1, GL_FALSE, glm::value_ptr(normal_matrix));
-			glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh->index_count()), model_mesh::index_type, nullptr);
-		}
-	}
-
-	auto clear_frame_data() -> void {
-		m_environment.reset();
-		m_directional_lights.clear();
-		m_point_lights.clear();
-		m_spot_lights.clear();
-		m_model_instances.clear();
-		m_model_instances_with_alpha_test.clear();
-		m_mesh_instances_with_alpha_blending.clear();
-	}
-
-	model_shader m_model_shader{false};
-	model_shader m_model_shader_with_alpha_test{true};
+	model_shader m_model_shader{false, false};
+	model_shader m_model_shader_with_alpha_test{true, false};
+	model_shader m_model_shader_with_alpha_blending{false, true};
 	texture m_brdf_lookup_table = brdf_generator{}.generate_lookup_table(GL_RG16F, brdf_lookup_table_resolution);
 	std::shared_ptr<environment_cubemap> m_environment{};
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{};
 	std::vector<spot_light> m_spot_lights{};
 	model_instance_map m_model_instances{};
-	model_instance_map m_model_instances_with_alpha_test{};
-	mesh_instance_list m_mesh_instances_with_alpha_blending{};
+	alpha_blended_mesh_instance_list m_alpha_blended_mesh_instances{};
 };
 
 #endif

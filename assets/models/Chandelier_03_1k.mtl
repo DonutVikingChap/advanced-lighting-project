@@ -1,0 +1,30 @@
+# Blender MTL File: 'Chandelier_03_1k.blend'
+# Material Count: 2
+
+newmtl Chandelier_03
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.0 0.0 0.0
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Chandelier_03_diff_1k.png
+map_Kn Chandelier_03_nor_gl_1k.png
+map_Ks Chandelier_03_roughness_1k.jpg
+map_Ns Chandelier_03_metallic_1k.png
+
+newmtl Chandelier_03_glass
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.171597 0.171597 0.171597
+Ks 0.500000 0.500000 0.500000
+Ke 0.0 0.0 0.0
+Ni 1.450000
+d 0.500000
+illum 9
+map_Kd Chandelier_03_diff_1k.png
+map_Kn Chandelier_03_nor_gl_1k.png
+map_Ks Chandelier_03_roughness_1k.jpg
+map_Ns Chandelier_03_metallic_1k.png

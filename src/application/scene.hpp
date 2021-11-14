@@ -59,12 +59,6 @@ public:
 		for (const auto& object : m_objects) {
 			renderer.model().draw_model(object.model, object.transform);
 		}
-		for (const auto& object : m_objects_with_alpha_test) {
-			renderer.model().draw_model_with_alpha_test(object.model, object.transform);
-		}
-		for (const auto& object : m_objects_with_alpha_blending) {
-			renderer.model().draw_model_with_alpha_blending(object.model, object.transform);
-		}
 	}
 
 	[[nodiscard]] auto controller() noexcept -> flight_controller& {
@@ -85,7 +79,7 @@ public:
 
 private:
 	struct object final {
-		std::shared_ptr<textured_model> model;
+		std::shared_ptr<model> model;
 		mat4 transform;
 	};
 
@@ -100,7 +94,7 @@ private:
 	std::vector<directional_light> m_directional_lights{};
 	std::vector<point_light> m_point_lights{
 		{
-			.position = {1.5f, 1.5f, 2.3f},
+			.position = {-1.8f, 1.8f, 1.75f},
 			.color = {0.8f, 0.8f, 0.8f},
 			.constant = 1.0f,
 			.linear = 0.045f,
@@ -110,28 +104,32 @@ private:
 	std::vector<spot_light> m_spot_lights{};
 	std::vector<object> m_objects{
 		{
-			.model = m_asset_manager.load_textured_model("assets/models/suzanne.obj", "assets/textures/"),
+			.model = m_asset_manager.load_model("assets/models/sponza.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
+		},
+		{
+			.model = m_asset_manager.load_model("assets/models/alarm_clock_01_1k.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
+		},
+		{
+			.model = m_asset_manager.load_model("assets/models/suzanne.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
 		},
 		{
-			.model = m_asset_manager.load_textured_model("assets/models/teapot.obj", "assets/textures/"),
-			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{8.0f, -1.0f, 0.0f}), vec3{0.5f}),
+			.model = m_asset_manager.load_model("assets/models/tea_set_01_1k.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{4.0f, -1.0f, 0.0f}), vec3{10.0f}),
 		},
 		{
-			.model = m_asset_manager.load_textured_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
+			.model = m_asset_manager.load_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
 		},
-	};
-	std::vector<object> m_objects_with_alpha_test{
 		{
-			.model = m_asset_manager.load_textured_model("assets/models/sponza.obj", "assets/textures/"),
-			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
+			.model = m_asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 		},
-	};
-	std::vector<object> m_objects_with_alpha_blending{
 		{
-			.model = m_asset_manager.load_textured_model("assets/models/alarm_clock_01_4k.obj", "assets/textures/"),
-			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
+			.model = m_asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
+			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 		},
 	};
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, 0.0f};
