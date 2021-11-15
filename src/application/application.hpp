@@ -30,7 +30,7 @@ public:
 		.window_resizable = true,
 		.tick_rate = 60,
 		.min_fps = 10,
-		.max_fps = 1200,
+		.max_fps = 240,
 		.v_sync = false,
 		.msaa_level = 4,
 	};
@@ -81,7 +81,10 @@ private:
 		if (m_renderer.gui().enabled()) {
 			ImGui::ShowDemoWindow();
 
-			ImGui::Begin("Shaders");
+			ImGui::Begin("Application");
+			if (ImGui::SliderFloat("FPS Limit", &m_max_fps, 0.0f, 1000.0f)) {
+				set_max_fps(m_max_fps);
+			}
 			if (ImGui::Button("Reload shaders")) {
 				try {
 					auto width = 0;
@@ -147,6 +150,7 @@ private:
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
 	scene m_scene{m_asset_manager};
 	viewport m_viewport{};
+	float m_max_fps = options.max_fps;
 };
 
 #endif

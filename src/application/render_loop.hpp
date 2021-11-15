@@ -111,6 +111,10 @@ public:
 		}
 	}
 
+	auto set_max_fps(float max_fps) -> void {
+		m_min_frame_interval = (max_fps == 0.0f) ? Uint64{0} : static_cast<Uint64>(std::ceil(static_cast<float>(m_clock_frequency) / max_fps));
+	}
+
 	[[nodiscard]] auto latest_measured_fps() const noexcept -> unsigned int {
 		return m_latest_measured_fps;
 	}
