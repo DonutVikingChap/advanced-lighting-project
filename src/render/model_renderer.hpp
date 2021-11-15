@@ -106,6 +106,7 @@ public:
 		// Render meshes with alpha.
 		glUseProgram(m_model_shader_with_alpha_test.program.get());
 		upload_uniform_frame_data(m_model_shader_with_alpha_test, view_matrix, view_position);
+		glDisable(GL_CULL_FACE);
 		for (const auto& [model, instances] : m_model_instances) {
 			const auto model_texture_units_begin = reserved_texture_units_end;
 			auto i = 0;
@@ -137,6 +138,7 @@ public:
 				}
 			}
 		}
+		glEnable(GL_CULL_FACE);
 
 		// Render alpha blended mesh instances back-to-front.
 		std::ranges::sort(m_alpha_blended_mesh_instances, [](const auto& lhs, const auto& rhs) { return lhs.depth > rhs.depth; });
@@ -261,12 +263,12 @@ private:
 
 	struct alpha_blended_mesh_instance final {
 		explicit alpha_blended_mesh_instance(std::shared_ptr<model> model, const model_mesh& mesh, const mat4& transform, float depth) noexcept
-			: model(std::move(model))
+			: model_ptr(std::move(model))
 			, mesh(&mesh)
 			, transform(transform)
 			, depth(depth) {}
 
-		std::shared_ptr<model> model;
+		std::shared_ptr<model> model_ptr;
 		const model_mesh* mesh;
 		mat4 transform;
 		float depth;

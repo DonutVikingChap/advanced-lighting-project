@@ -57,7 +57,7 @@ public:
 			renderer.model().draw_spot_light(light);
 		}
 		for (const auto& object : m_objects) {
-			renderer.model().draw_model(object.model, object.transform);
+			renderer.model().draw_model(object.model_ptr, object.transform);
 		}
 	}
 
@@ -79,7 +79,7 @@ public:
 
 private:
 	struct object final {
-		std::shared_ptr<model> model;
+		std::shared_ptr<model> model_ptr;
 		mat4 transform;
 	};
 
@@ -104,31 +104,31 @@ private:
 	std::vector<spot_light> m_spot_lights{};
 	std::vector<object> m_objects{
 		{
-			.model = m_asset_manager.load_model("assets/models/sponza.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/sponza.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
 		},
 		{
-			.model = m_asset_manager.load_model("assets/models/alarm_clock_01_1k.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/alarm_clock_01_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
 		},
 		{
-			.model = m_asset_manager.load_model("assets/models/suzanne.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/suzanne.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
 		},
 		{
-			.model = m_asset_manager.load_model("assets/models/tea_set_01_1k.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/tea_set_01_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{4.0f, -1.0f, 0.0f}), vec3{10.0f}),
 		},
 		{
-			.model = m_asset_manager.load_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
 		},
 		{
-			.model = m_asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 		},
 		{
-			.model = m_asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
+			.model_ptr = m_asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
 			.transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 		},
 	};

@@ -58,7 +58,7 @@ public:
 		int width = 0;
 		int height = 0;
 		int channel_count = 0;
-		auto* const pixels = reinterpret_cast<std::byte*>(stbi_load(filename, &width, &height, &channel_count, options.desired_channel_count));
+		auto* const pixels = stbi_load(filename, &width, &height, &channel_count, options.desired_channel_count);
 		if (!pixels) {
 			throw image_error{fmt::format("Failed to load image \"{}\"!", filename)};
 		}

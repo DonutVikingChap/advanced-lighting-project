@@ -16,10 +16,6 @@
 
 class asset_manager final {
 public:
-	auto reload_shaders() -> void {
-		m_cubemap_generator.reload_shaders();
-	}
-
 	[[nodiscard]] auto load_font(const char* filename, unsigned int size) -> std::shared_ptr<font> {
 		const auto it = m_fonts.try_emplace(fmt::format("{}@{}", filename, size)).first;
 		if (auto ptr = it->second.lock()) {
@@ -116,6 +112,16 @@ public:
 		return ptr;
 	}
 
+	auto clear() noexcept -> void {
+		m_models.clear();
+		m_cubemaps_hdr.clear();
+		m_cubemaps.clear();
+		m_model_texture_cache.clear();
+		m_images_hdr.clear();
+		m_images.clear();
+		m_fonts.clear();
+	}
+
 	auto cleanup() -> void {
 		static constexpr auto has_expired = [](const auto& kv) {
 			return kv.second.expired();
@@ -127,6 +133,10 @@ public:
 		std::erase_if(m_images_hdr, has_expired);
 		std::erase_if(m_images, has_expired);
 		std::erase_if(m_fonts, has_expired);
+	}
+
+	auto reload_shaders() -> void {
+		m_cubemap_generator.reload_shaders();
 	}
 
 private:
