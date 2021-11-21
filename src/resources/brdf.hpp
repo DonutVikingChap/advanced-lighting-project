@@ -37,6 +37,8 @@ private:
 
 class brdf_generator final {
 public:
+	static constexpr auto lookup_table_internal_format = GLint{GL_R16F};
+	static constexpr auto lookup_table_resolution = std::size_t{512};
 	static constexpr auto lookup_table_sample_count = 1024u;
 
 	static constexpr auto lookup_table_texture_options = texture_options{
@@ -47,7 +49,7 @@ public:
 	};
 
 	[[nodiscard]] static auto get_lookup_table() -> const texture& {
-		static const auto lookup_table = brdf_generator{}.generate_lookup_table(GL_R16F, std::size_t{512});
+		static const auto lookup_table = brdf_generator{}.generate_lookup_table();
 		return lookup_table;
 	}
 
@@ -55,14 +57,14 @@ public:
 		m_lookup_table_shader = lookup_table_shader{};
 	}
 
-	[[nodiscard]] auto generate_lookup_table(GLint internal_format, std::size_t resolution) const -> texture {
+	[[nodiscard]] auto generate_lookup_table() const -> texture {
 		const auto preserver = state_preserver{};
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
 		glUseProgram(m_lookup_table_shader.program.get());
 		glBindVertexArray(m_lookup_table_mesh.get());
-		auto result = texture::create_2d_uninitialized(internal_format, resolution, resolution, lookup_table_texture_options);
-		glViewport(0, 0, static_cast<GLsizei>(resolution), static_cast<GLsizei>(resolution));
+		auto result = texture::create_2d_uninitialized(lookup_table_internal_format, lookup_table_resolution, lookup_table_resolution, lookup_table_texture_options);
+		glViewport(0, 0, static_cast<GLsizei>(lookup_table_resolution), static_cast<GLsizei>(lookup_table_resolution));
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, result.get(), 0);
 		glDrawArrays(brdf_lookup_table_mesh::primitive_type, 0, static_cast<GLsizei>(brdf_lookup_table_mesh::vertices.size()));
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);

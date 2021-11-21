@@ -9,7 +9,6 @@
 #include "shader.hpp"
 #include "texture.hpp"
 
-#include <algorithm>     // std::max
 #include <cstddef>       // std::byte, std::size_t
 #include <fmt/format.h>  // fmt::format
 #include <memory>        // std::unique_ptr
@@ -148,10 +147,10 @@ public:
 				size.y += line_space();
 			} else if (const auto* const glyph = find_glyph(ch)) {
 				if (top) {
-					size.y = std::max(size.y, glyph->size.y);
+					size.y = max(size.y, glyph->size.y);
 				}
 				x += glyph->advance + kerning(ch, (it == code_points.end()) ? 0 : *it);
-				size.x = std::max(size.x, x);
+				size.x = max(size.x, x);
 			}
 		}
 		return size * scale;

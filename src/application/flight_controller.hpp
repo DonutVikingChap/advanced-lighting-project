@@ -3,17 +3,14 @@
 
 #include "../core/glsl.hpp"
 
-#include <SDL.h>       // SDL_...
-#include <algorithm>   // std::clamp
-#include <cmath>       // std::cos, std::sin
-#include <glm/glm.hpp> // glm::dot, glm::cross, glm::normalize
+#include <SDL.h> // SDL_...
 
 class flight_controller final {
 public:
 	flight_controller(vec3 position, float yaw, float pitch)
 		: m_position(position)
 		, m_forward_direction(direction_vector(yaw, pitch))
-		, m_right_direction(glm::cross(m_forward_direction, up_direction))
+		, m_right_direction(cross(m_forward_direction, up_direction))
 		, m_yaw(yaw)
 		, m_pitch(pitch) {
 		SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -70,9 +67,9 @@ public:
 				case SDL_MOUSEMOTION:
 					m_yaw += static_cast<float>(e.motion.xrel) * mouse_sensitivity * mouse_yaw_coefficient;
 					m_pitch += static_cast<float>(e.motion.yrel) * mouse_sensitivity * mouse_pitch_coefficient;
-					m_pitch = std::clamp(m_pitch, pitch_min, pitch_max);
+					m_pitch = clamp(m_pitch, pitch_min, pitch_max);
 					m_forward_direction = direction_vector(m_yaw, m_pitch);
-					m_right_direction = glm::cross(m_forward_direction, up_direction);
+					m_right_direction = cross(m_forward_direction, up_direction);
 					break;
 			}
 		}
@@ -87,13 +84,13 @@ public:
 
 		m_yaw += static_cast<float>(input_aim_right) * yaw_speed * delta_time;
 		m_pitch += static_cast<float>(input_aim_up) * pitch_speed * delta_time;
-		m_pitch = std::clamp(m_pitch, pitch_min, pitch_max);
+		m_pitch = clamp(m_pitch, pitch_min, pitch_max);
 		m_forward_direction = direction_vector(m_yaw, m_pitch);
-		m_right_direction = glm::cross(m_forward_direction, up_direction);
+		m_right_direction = cross(m_forward_direction, up_direction);
 
 		m_acceleration = {};
 		if (input_forward == 0 && input_right == 0 && input_up == 0) {
-			if (glm::dot(m_velocity, m_velocity) < min_speed_squared) {
+			if (dot(m_velocity, m_velocity) < min_speed_squared) {
 				m_velocity = {};
 			} else {
 				m_acceleration = m_velocity * -move_drag;
@@ -102,7 +99,7 @@ public:
 			const auto input_direction = m_forward_direction * static_cast<float>(input_forward) + m_right_direction * static_cast<float>(input_right) +
 				up_direction * static_cast<float>(input_up);
 			const auto input_acceleration = move_acceleration + static_cast<float>(m_inputs.speed) * move_acceleration;
-			m_acceleration = glm::normalize(input_direction) * input_acceleration - m_velocity * move_drag;
+			m_acceleration = normalize(input_direction) * input_acceleration - m_velocity * move_drag;
 		}
 
 		const auto new_velocity = m_velocity + m_acceleration * delta_time;
@@ -155,8 +152,8 @@ private:
 	static constexpr auto up_direction = vec3{0.0f, 1.0f, 0.0f};
 
 	[[nodiscard]] static auto direction_vector(float yaw, float pitch) noexcept -> vec3 {
-		const auto pitch_cos = std::cos(pitch);
-		return vec3{std::cos(yaw) * pitch_cos, std::sin(pitch), std::sin(yaw) * pitch_cos};
+		const auto pitch_cos = cos(pitch);
+		return vec3{cos(yaw) * pitch_cos, sin(pitch), sin(yaw) * pitch_cos};
 	}
 
 	vec3 m_position;

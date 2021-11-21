@@ -13,7 +13,6 @@
 #include <cstdint>              // std::uint32_t
 #include <cstring>              // std::memcpy
 #include <functional>           // std::function
-#include <glm/glm.hpp>          // glm::inverse
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <lightmapper.h>        // lm..., LM_...
 #include <memory>               // std::unique_ptr, std::shared_ptr, std::make_shared
@@ -340,7 +339,7 @@ public:
 							for (const auto& object : scene.objects) {
 								model_baker.draw_model(object.model_ptr, object.transform, object.lightmap_offset, object.lightmap_scale);
 							}
-							model_baker.render(view_matrix, vec3{glm::inverse(view_matrix)[3]});
+							model_baker.render(view_matrix, vec3{inverse(view_matrix)[3]});
 							skybox_baker.render(mat3{view_matrix});
 							if (!callback("Baking lightmaps",
 									bounce_index,

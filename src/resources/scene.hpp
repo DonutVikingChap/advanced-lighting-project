@@ -7,14 +7,13 @@
 #include "model.hpp"
 #include "texture.hpp"
 
-#include <cstddef>     // std::size_t
-#include <glm/glm.hpp> // glm::identity
-#include <memory>      // std::shared_ptr
-#include <vector>      // std::vector
+#include <cstddef> // std::size_t
+#include <memory>  // std::shared_ptr
+#include <vector>  // std::vector
 
 struct scene_object final {
 	std::shared_ptr<model> model_ptr{};
-	mat4 transform = glm::identity<mat4>();
+	mat4 transform{1.0f};
 	vec2 lightmap_offset{};
 	vec2 lightmap_scale{};
 };

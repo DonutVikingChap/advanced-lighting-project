@@ -12,7 +12,7 @@
 #include <array>                // std::array
 #include <cmath>                // std::pow
 #include <fmt/format.h>         // fmt::format
-#include <glm/glm.hpp>          // glm::perspective, glm::radians, glm::lookAt
+#include <glm/glm.hpp>          // glm::perspective, glm::lookAt
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <memory>               // std::shared_ptr
 #include <stdexcept>            // std::runtime_error
@@ -205,7 +205,7 @@ private:
 				  .definitions = definitions,
 			  })
 			, texture_uniform(program.get(), texture_uniform_name) {
-			const auto projection_matrix = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+			const auto projection_matrix = glm::perspective(radians(90.0f), 1.0f, 0.1f, 10.0f);
 			glUseProgram(program.get());
 			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 			glUniform1i(texture_uniform.location(), 0);

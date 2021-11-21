@@ -20,4 +20,28 @@ using sampler2DArrayShadow = GLint;
 using samplerCube = GLint;
 using samplerCubeShadow = GLint;
 
+using glm::abs;
+using glm::acos;
+using glm::all;
+using glm::any;
+using glm::asin;
+using glm::atan;
+using glm::ceil;
+using glm::clamp;
+using glm::cos;
+using glm::cross;
+using glm::degrees;
+using glm::dot;
+using glm::floor;
+using glm::inverse;
+using glm::isnan;
+using glm::length;
+using glm::max;
+using glm::min;
+using glm::normalize;
+using glm::radians;
+using glm::round;
+using glm::sin;
+using glm::tan;
+
 #endif

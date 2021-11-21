@@ -14,7 +14,6 @@
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
 #include <fmt/format.h> // fmt::format, fmt::print
-#include <glm/glm.hpp>  // glm::identity
 #include <imgui.h>      // ImGui
 #include <memory>       // std::shared_ptr
 #include <span>         // std::span

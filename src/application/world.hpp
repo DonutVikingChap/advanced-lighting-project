@@ -12,11 +12,10 @@
 
 #include <SDL.h>                // SDL_...
 #include <chrono>               // std::chrono
-#include <cmath>                // std::cos
 #include <cstddef>              // std::size_t, std::ptrdiff_t
 #include <cstdio>               // stderr
 #include <fmt/format.h>         // fmt::format, fmt::print
-#include <glm/glm.hpp>          // glm::identity, glm::lookAt, glm::translate, glm::scale, glm::normalize, glm::any, glm::isnan, glm::cross, glm::radians
+#include <glm/glm.hpp>          // glm::lookAt, glm::translate, glm::scale
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <imgui.h>              // ImGui
 #include <memory>               // std::shared_ptr, std::make_shared
@@ -52,39 +51,39 @@ public:
 						  .constant = 1.0f,
 						  .linear = 0.045f,
 						  .quadratic = 0.0075f,
-						  .inner_cutoff = std::cos(glm::radians(20.0f)),
-						  .outer_cutoff = std::cos(glm::radians(45.0f)),
+						  .inner_cutoff = cos(radians(20.0f)),
+						  .outer_cutoff = cos(radians(45.0f)),
 					  },
 				  },
 			  .objects =
 				  {
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/sponza/sponza.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
 					  },
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/alarm_clock_01_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
 					  },
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/suzanne.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
 					  },
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/tea_set_01_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{4.0f, -1.0f, 0.0f}), vec3{10.0f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{4.0f, -1.0f, 0.0f}), vec3{10.0f}),
 					  },
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
 					  },
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{5.0f, 20.0f, -1.0f}), vec3{6.0f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 					  },
 					  {
 						  .model_ptr = asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-5.0f, 20.0f, -1.0f}), vec3{6.0f}),
+						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{-5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 					  },
 				  },
 		  } {
@@ -143,8 +142,8 @@ public:
 				for (auto i = std::size_t{0}; i < m_scene.directional_lights.size(); ++i) {
 					if (ImGui::TreeNodeEx(fmt::format("Directional Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
 						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.directional_lights[i].direction), -1.0f, 1.0f)) {
-							m_scene.directional_lights[i].direction = glm::normalize(m_scene.directional_lights[i].direction);
-							if (glm::any(glm::isnan(m_scene.directional_lights[i].direction))) {
+							m_scene.directional_lights[i].direction = normalize(m_scene.directional_lights[i].direction);
+							if (any(isnan(m_scene.directional_lights[i].direction))) {
 								m_scene.directional_lights[i].direction = vec3{0.0f, -1.0f, 0.0f};
 							}
 						}
@@ -198,8 +197,8 @@ public:
 						.constant = 1.0f,
 						.linear = 0.045f,
 						.quadratic = 0.0075f,
-						.inner_cutoff = std::cos(glm::radians(40.0f)),
-						.outer_cutoff = std::cos(glm::radians(50.0f)),
+						.inner_cutoff = cos(radians(40.0f)),
+						.outer_cutoff = cos(radians(50.0f)),
 					});
 				}
 				ImGui::Separator();
@@ -207,8 +206,8 @@ public:
 					if (ImGui::TreeNodeEx(fmt::format("Spot Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
 						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.spot_lights[i].position), -50.0f, 50.0f);
 						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.spot_lights[i].direction), -1.0f, 1.0f)) {
-							m_scene.spot_lights[i].direction = glm::normalize(m_scene.spot_lights[i].direction);
-							if (glm::any(glm::isnan(m_scene.spot_lights[i].direction))) {
+							m_scene.spot_lights[i].direction = normalize(m_scene.spot_lights[i].direction);
+							if (any(isnan(m_scene.spot_lights[i].direction))) {
 								m_scene.spot_lights[i].direction = vec3{0.0f, -1.0f, 0.0f};
 							}
 						}
@@ -239,10 +238,8 @@ public:
 		for (const auto& light : m_scene.point_lights) {
 			renderer.model().draw_point_light(light);
 			if (m_show_lights) {
-				renderer.model().draw_model(m_point_light_model,
-					glm::scale(glm::translate(glm::identity<mat4>(), light.position), vec3{0.5f}),
-					m_scene.default_lightmap_offset,
-					m_scene.default_lightmap_scale);
+				renderer.model().draw_model(
+					m_point_light_model, glm::scale(glm::translate(mat4{1.0f}, light.position), vec3{0.5f}), m_scene.default_lightmap_offset, m_scene.default_lightmap_scale);
 			}
 		}
 		for (const auto& light : m_scene.spot_lights) {
@@ -251,9 +248,9 @@ public:
 				const auto world_up = vec3{0.0f, 1.0f, 0.0f};
 				const auto forward = light.direction;
 				const auto right_cross = glm::cross(forward, world_up);
-				const auto right = (right_cross == vec3{}) ? vec3{1.0f, 0.0f, 0.0f} : glm::normalize(right_cross);
-				const auto up = glm::cross(forward, right);
-				const auto transform = glm::scale(glm::translate(glm::identity<mat4>(), light.position) *
+				const auto right = (right_cross == vec3{}) ? vec3{1.0f, 0.0f, 0.0f} : normalize(right_cross);
+				const auto up = cross(forward, right);
+				const auto transform = glm::scale(glm::translate(mat4{1.0f}, light.position) *
 						mat4{
 							vec4{right, 0.0f},
 							vec4{up, 0.0f},
