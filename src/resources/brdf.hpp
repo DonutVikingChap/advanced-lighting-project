@@ -8,8 +8,9 @@
 #include "shader.hpp"
 #include "texture.hpp"
 
-#include <array> // std::array
-#include <tuple> // std::tuple
+#include <array>   // std::array
+#include <cstddef> // std::size_t
+#include <tuple>   // std::tuple
 
 struct brdf_lookup_table_vertex final {
 	vec2 position{};
@@ -44,6 +45,11 @@ public:
 		.use_linear_filtering = true,
 		.use_mip_map = false,
 	};
+
+	[[nodiscard]] static auto get_lookup_table() -> const texture& {
+		static const auto lookup_table = brdf_generator{}.generate_lookup_table(GL_R16F, std::size_t{512});
+		return lookup_table;
+	}
 
 	auto reload_shaders() -> void {
 		m_lookup_table_shader = lookup_table_shader{};

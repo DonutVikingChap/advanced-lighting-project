@@ -24,7 +24,6 @@
 class model_renderer final {
 public:
 	static constexpr auto gamma = 2.2f;
-	static constexpr auto brdf_lookup_table_resolution = std::size_t{512};
 	static constexpr auto directional_light_count = std::size_t{1};
 	static constexpr auto point_light_count = std::size_t{2};
 	static constexpr auto spot_light_count = std::size_t{2};
@@ -40,6 +39,9 @@ public:
 	static constexpr auto spot_light_texture_units_begin = GLint{point_light_texture_units_begin + point_light_count};
 	static constexpr auto reserved_texture_units_end = GLint{spot_light_texture_units_begin + spot_light_count};
 
+	explicit model_renderer(bool baking)
+		: m_baking(baking) {}
+
 	auto resize(const mat4& projection_matrix) -> void {
 		m_model_shader.upload_projection_matrix(projection_matrix);
 		m_model_shader_with_alpha_test.upload_projection_matrix(projection_matrix);
@@ -47,11 +49,11 @@ public:
 	}
 
 	auto reload_shaders(const mat4& projection_matrix) -> void {
-		m_model_shader = model_shader{false, false};
+		m_model_shader = model_shader{m_baking, false, false};
 		m_model_shader.upload_projection_matrix(projection_matrix);
-		m_model_shader_with_alpha_test = model_shader{true, false};
+		m_model_shader_with_alpha_test = model_shader{m_baking, true, false};
 		m_model_shader_with_alpha_test.upload_projection_matrix(projection_matrix);
-		m_model_shader_with_alpha_blending = model_shader{false, true};
+		m_model_shader_with_alpha_blending = model_shader{m_baking, false, true};
 		m_model_shader_with_alpha_blending.upload_projection_matrix(projection_matrix);
 	}
 
@@ -80,6 +82,10 @@ public:
 	}
 
 	auto render(const mat4& view_matrix, vec3 view_position) -> void {
+		if (m_baking) {
+			glDisable(GL_CULL_FACE);
+		}
+
 		// Render meshes without alpha.
 		glUseProgram(m_model_shader.program.get());
 		upload_uniform_frame_data(m_model_shader, view_matrix, view_position);
@@ -115,7 +121,9 @@ public:
 		// Render meshes with alpha.
 		glUseProgram(m_model_shader_with_alpha_test.program.get());
 		upload_uniform_frame_data(m_model_shader_with_alpha_test, view_matrix, view_position);
-		glDisable(GL_CULL_FACE);
+		if (!m_baking) {
+			glDisable(GL_CULL_FACE);
+		}
 		for (const auto& [model, instances] : m_model_instances) {
 			const auto model_texture_units_begin = reserved_texture_units_end;
 			auto texture_index = 0;
@@ -150,7 +158,9 @@ public:
 				}
 			}
 		}
-		glEnable(GL_CULL_FACE);
+		if (!m_baking) {
+			glEnable(GL_CULL_FACE);
+		}
 
 		// Render alpha blended mesh instances back-to-front.
 		std::ranges::sort(m_alpha_blended_mesh_instances, [](const auto& lhs, const auto& rhs) { return lhs.depth > rhs.depth; });
@@ -191,23 +201,28 @@ public:
 		m_spot_lights.clear();
 		m_model_instances.clear();
 		m_alpha_blended_mesh_instances.clear();
+
+		if (m_baking) {
+			glEnable(GL_CULL_FACE);
+		}
 	}
 
 private:
 	struct model_shader final {
-		model_shader(bool use_alpha_test, bool use_alpha_blending)
+		model_shader(bool baking, bool use_alpha_test, bool use_alpha_blending)
 			: program({
 				  .vertex_shader_filename = "assets/shaders/model.vert",
 				  .fragment_shader_filename = "assets/shaders/model.frag",
 				  .definitions =
 					  {
+						  {"BAKING", (baking) ? 1 : 0},
+						  {"USE_ALPHA_TEST", (use_alpha_test) ? 1 : 0},
+						  {"USE_ALPHA_BLENDING", (use_alpha_blending) ? 1 : 0},
 						  {"GAMMA", gamma},
 						  {"DIRECTIONAL_LIGHT_COUNT", directional_light_count},
 						  {"POINT_LIGHT_COUNT", point_light_count},
 						  {"SPOT_LIGHT_COUNT", spot_light_count},
 						  {"CSM_CASCADE_COUNT", directional_light::csm_cascade_count},
-						  {"USE_ALPHA_TEST", (use_alpha_test) ? 1 : 0},
-						  {"USE_ALPHA_BLENDING", (use_alpha_blending) ? 1 : 0},
 					  },
 			  }) {
 			glUseProgram(program.get());
@@ -320,7 +335,7 @@ private:
 
 		// Upload BRDF LUT texture.
 		glActiveTexture(GL_TEXTURE0 + brdf_lookup_table_texture_unit);
-		glBindTexture(GL_TEXTURE_2D, m_brdf_lookup_table.get());
+		glBindTexture(GL_TEXTURE_2D, brdf_generator::get_lookup_table().get());
 		glUniform1i(shader.brdf_lookup_table_texture.location(), brdf_lookup_table_texture_unit);
 
 		// Upload directional lights.
@@ -427,10 +442,10 @@ private:
 		}
 	}
 
-	model_shader m_model_shader{false, false};
-	model_shader m_model_shader_with_alpha_test{true, false};
-	model_shader m_model_shader_with_alpha_blending{false, true};
-	texture m_brdf_lookup_table = brdf_generator{}.generate_lookup_table(GL_RG16F, brdf_lookup_table_resolution);
+	bool m_baking;
+	model_shader m_model_shader{m_baking, false, false};
+	model_shader m_model_shader_with_alpha_test{m_baking, true, false};
+	model_shader m_model_shader_with_alpha_blending{m_baking, false, true};
 	std::shared_ptr<texture> m_lightmap{};
 	std::shared_ptr<environment_cubemap> m_environment{};
 	std::vector<directional_light> m_directional_lights{};

@@ -5,6 +5,7 @@
 #include "cubemap.hpp"
 #include "light.hpp"
 #include "model.hpp"
+#include "texture.hpp"
 
 #include <cstddef>     // std::size_t
 #include <glm/glm.hpp> // glm::identity
@@ -24,6 +25,7 @@ struct scene final {
 	std::vector<point_light> point_lights{};
 	std::vector<spot_light> spot_lights{};
 	std::vector<scene_object> objects{};
+	std::shared_ptr<texture> lightmap{};
 	vec2 default_lightmap_offset{};
 	vec2 default_lightmap_scale{};
 };

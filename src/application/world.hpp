@@ -11,11 +11,12 @@
 #include "flight_controller.hpp"
 
 #include <SDL.h>                // SDL_...
-#include <cmath>                // std::round
-#include <cstddef>              // std::size_t
+#include <chrono>               // std::chrono
+#include <cmath>                // std::cos
+#include <cstddef>              // std::size_t, std::ptrdiff_t
 #include <cstdio>               // stderr
 #include <fmt/format.h>         // fmt::format, fmt::print
-#include <glm/glm.hpp>          // glm::identity, glm::lookAt, glm::translate, glm::scale
+#include <glm/glm.hpp>          // glm::identity, glm::lookAt, glm::translate, glm::scale, glm::normalize, glm::any, glm::isnan, glm::cross, glm::radians
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <imgui.h>              // ImGui
 #include <memory>               // std::shared_ptr, std::make_shared
@@ -27,6 +28,8 @@ class world final {
 public:
 	world(std::string filename, asset_manager& asset_manager)
 		: m_filename(std::move(filename))
+		, m_point_light_model(asset_manager.load_model("assets/models/point_light.obj", "assets/textures/"))
+		, m_spot_light_model(asset_manager.load_model("assets/models/spot_light.obj", "assets/textures/"))
 		, m_scene{
 			  .sky = asset_manager.load_environment_cubemap_equirectangular_hdr("assets/textures/studio_country_hall_1k_dark.hdr", 512),
 			  .directional_lights = {},
@@ -40,7 +43,19 @@ public:
 						  .quadratic = 0.0075f,
 					  },
 				  },
-			  .spot_lights = {},
+			  .spot_lights =
+				  {
+					  {
+						  .position = {-28.0f, 4.3f, -1.0f},
+						  .direction = vec3{-0.85f, -0.48f, 0.0f},
+						  .color = {1.0f, 1.0f, 1.0f},
+						  .constant = 1.0f,
+						  .linear = 0.045f,
+						  .quadratic = 0.0075f,
+						  .inner_cutoff = std::cos(glm::radians(20.0f)),
+						  .outer_cutoff = std::cos(glm::radians(45.0f)),
+					  },
+				  },
 			  .objects =
 				  {
 					  {
@@ -72,7 +87,9 @@ public:
 						  .transform = glm::scale(glm::translate(glm::identity<mat4>(), vec3{-5.0f, 20.0f, -1.0f}), vec3{6.0f}),
 					  },
 				  },
-		  } {}
+		  } {
+		lightmap_generator::reset_lightmap(m_scene, sky_color);
+	}
 
 	auto handle_event(const SDL_Event& e) -> void {
 		m_controller.handle_event(e, mouse_sensitivity);
@@ -95,30 +112,157 @@ public:
 				save_lightmap();
 			}
 			if (ImGui::Button("Bake lightmap")) {
-				bake_lightmap(renderer);
+				bake_lightmap();
 			}
 			ImGui::End();
-			if (!m_scene.point_lights.empty()) {
-				ImGui::Begin("Light");
-				ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.point_lights[0].position), -50.0f, 50.0f);
-				ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.point_lights[0].color), 0.0f, 5.0f);
-				ImGui::SliderFloat("Constant", &m_scene.point_lights[0].constant, 0.0f, 1.0f);
-				ImGui::SliderFloat("Linear", &m_scene.point_lights[0].linear, 0.0f, 1.0f);
-				ImGui::SliderFloat("Quadratic", &m_scene.point_lights[0].quadratic, 0.0f, 1.0f);
-				ImGui::End();
+
+			ImGui::Begin("Objects");
+			for (auto i = std::size_t{0}; i < m_scene.objects.size(); ++i) {
+				if (ImGui::TreeNodeEx(fmt::format("Object {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+					if (ImGui::Button("Remove")) {
+						m_scene.objects.erase(m_scene.objects.begin() + static_cast<std::ptrdiff_t>(i));
+						--i;
+					}
+					ImGui::TreePop();
+				}
+				ImGui::Separator();
 			}
+			ImGui::End();
+
+			ImGui::Begin("Lights");
+			ImGui::Checkbox("Show Lights", &m_show_lights);
+			ImGui::Separator();
+			if (ImGui::TreeNode("Directional Lights")) {
+				if (ImGui::Button("Add New Directional Light")) {
+					m_scene.directional_lights.push_back(directional_light{
+						.direction = vec3{0.0f, -1.0f, 0.0f},
+						.color = vec3{1.0f, 1.0f, 1.0f},
+					});
+				}
+				ImGui::Separator();
+				for (auto i = std::size_t{0}; i < m_scene.directional_lights.size(); ++i) {
+					if (ImGui::TreeNodeEx(fmt::format("Directional Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.directional_lights[i].direction), -1.0f, 1.0f)) {
+							m_scene.directional_lights[i].direction = glm::normalize(m_scene.directional_lights[i].direction);
+							if (glm::any(glm::isnan(m_scene.directional_lights[i].direction))) {
+								m_scene.directional_lights[i].direction = vec3{0.0f, -1.0f, 0.0f};
+							}
+						}
+						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.directional_lights[i].color), 0.0f, 5.0f);
+						if (ImGui::Button("Remove")) {
+							m_scene.directional_lights.erase(m_scene.directional_lights.begin() + static_cast<std::ptrdiff_t>(i));
+							--i;
+						}
+						ImGui::TreePop();
+					}
+					ImGui::Separator();
+				}
+				ImGui::TreePop();
+			}
+			ImGui::Separator();
+			if (ImGui::TreeNode("Point Lights")) {
+				if (ImGui::Button("Add New Point Light")) {
+					m_scene.point_lights.push_back(point_light{
+						.position = vec3{0.0f, 0.0f, 0.0f},
+						.color = vec3{1.0f, 1.0f, 1.0f},
+						.constant = 1.0f,
+						.linear = 0.045f,
+						.quadratic = 0.0075f,
+					});
+				}
+				ImGui::Separator();
+				for (auto i = std::size_t{0}; i < m_scene.point_lights.size(); ++i) {
+					if (ImGui::TreeNodeEx(fmt::format("Point Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.point_lights[i].position), -50.0f, 50.0f);
+						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.point_lights[i].color), 0.0f, 5.0f);
+						ImGui::SliderFloat("Constant", &m_scene.point_lights[i].constant, 0.0f, 1.0f);
+						ImGui::SliderFloat("Linear", &m_scene.point_lights[i].linear, 0.0f, 1.0f);
+						ImGui::SliderFloat("Quadratic", &m_scene.point_lights[i].quadratic, 0.0f, 1.0f);
+						if (ImGui::Button("Remove")) {
+							m_scene.point_lights.erase(m_scene.point_lights.begin() + static_cast<std::ptrdiff_t>(i));
+							--i;
+						}
+						ImGui::TreePop();
+					}
+					ImGui::Separator();
+				}
+				ImGui::TreePop();
+			}
+			ImGui::Separator();
+			if (ImGui::TreeNode("Spot Lights")) {
+				if (ImGui::Button("Add New Spot Light")) {
+					m_scene.spot_lights.push_back(spot_light{
+						.position = vec3{0.0f, 0.0f, 0.0f},
+						.direction = vec3{0.0f, -1.0f, 0.0f},
+						.color = vec3{1.0f, 1.0f, 1.0f},
+						.constant = 1.0f,
+						.linear = 0.045f,
+						.quadratic = 0.0075f,
+						.inner_cutoff = std::cos(glm::radians(40.0f)),
+						.outer_cutoff = std::cos(glm::radians(50.0f)),
+					});
+				}
+				ImGui::Separator();
+				for (auto i = std::size_t{0}; i < m_scene.spot_lights.size(); ++i) {
+					if (ImGui::TreeNodeEx(fmt::format("Spot Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.spot_lights[i].position), -50.0f, 50.0f);
+						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.spot_lights[i].direction), -1.0f, 1.0f)) {
+							m_scene.spot_lights[i].direction = glm::normalize(m_scene.spot_lights[i].direction);
+							if (glm::any(glm::isnan(m_scene.spot_lights[i].direction))) {
+								m_scene.spot_lights[i].direction = vec3{0.0f, -1.0f, 0.0f};
+							}
+						}
+						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.spot_lights[i].color), 0.0f, 5.0f);
+						ImGui::SliderFloat("Constant", &m_scene.spot_lights[i].constant, 0.0f, 1.0f);
+						ImGui::SliderFloat("Linear", &m_scene.spot_lights[i].linear, 0.0f, 1.0f);
+						ImGui::SliderFloat("Quadratic", &m_scene.spot_lights[i].quadratic, 0.0f, 1.0f);
+						ImGui::SliderFloat("Inner cutoff", &m_scene.spot_lights[i].inner_cutoff, 0.0f, 1.0f);
+						ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i].outer_cutoff, 0.0f, 1.0f);
+						if (ImGui::Button("Remove")) {
+							m_scene.spot_lights.erase(m_scene.spot_lights.begin() + static_cast<std::ptrdiff_t>(i));
+							--i;
+						}
+						ImGui::TreePop();
+					}
+					ImGui::Separator();
+				}
+				ImGui::TreePop();
+			}
+			ImGui::End();
 		}
 		renderer.skybox().draw_skybox(m_scene.sky->original());
-		renderer.model().draw_lightmap(m_lightmap);
+		renderer.model().draw_lightmap(m_scene.lightmap);
 		renderer.model().draw_environment(m_scene.sky);
 		for (const auto& light : m_scene.directional_lights) {
 			renderer.model().draw_directional_light(light);
 		}
 		for (const auto& light : m_scene.point_lights) {
 			renderer.model().draw_point_light(light);
+			if (m_show_lights) {
+				renderer.model().draw_model(m_point_light_model,
+					glm::scale(glm::translate(glm::identity<mat4>(), light.position), vec3{0.5f}),
+					m_scene.default_lightmap_offset,
+					m_scene.default_lightmap_scale);
+			}
 		}
 		for (const auto& light : m_scene.spot_lights) {
 			renderer.model().draw_spot_light(light);
+			if (m_show_lights) {
+				const auto world_up = vec3{0.0f, 1.0f, 0.0f};
+				const auto forward = light.direction;
+				const auto right_cross = glm::cross(forward, world_up);
+				const auto right = (right_cross == vec3{}) ? vec3{1.0f, 0.0f, 0.0f} : glm::normalize(right_cross);
+				const auto up = glm::cross(forward, right);
+				const auto transform = glm::scale(glm::translate(glm::identity<mat4>(), light.position) *
+						mat4{
+							vec4{right, 0.0f},
+							vec4{up, 0.0f},
+							vec4{forward, 0.0f},
+							vec4{vec3{}, 1.0f},
+						},
+					vec3{0.5f});
+				renderer.model().draw_model(m_spot_light_model, transform, m_scene.default_lightmap_offset, m_scene.default_lightmap_scale);
+			}
 		}
 		for (const auto& object : m_scene.objects) {
 			renderer.model().draw_model(object.model_ptr, object.transform, object.lightmap_offset, object.lightmap_scale);
@@ -143,6 +287,8 @@ public:
 
 private:
 	static constexpr auto sky_color = vec3{1.0f, 1.0f, 1.0f};
+	static constexpr auto lightmap_resolution = std::size_t{654};
+	static constexpr auto lightmap_bounce_count = std::size_t{1};
 	static constexpr auto mouse_sensitivity = 2.0f;
 	static constexpr auto move_acceleration = 40.0f;
 	static constexpr auto move_drag = 4.0f;
@@ -153,32 +299,35 @@ private:
 		return fmt::format("{}/lightmap.png", m_filename);
 	}
 
-	auto bake_lightmap(rendering_pipeline& renderer) -> void {
+	auto bake_lightmap() -> void {
 		try {
 			struct progress_callback final {
-				auto operator()(std::string_view category, std::size_t object_index, std::size_t object_count, float progress) -> bool {
-					if (object_index != next_index) {
-						next_index = object_index;
-						next_progress = 0.0f;
-					}
-					if (progress >= next_progress) {
-						auto current_progress = 0.0f;
-						do {
-							current_progress = next_progress;
-							next_progress += 0.01f;
-						} while (next_progress <= progress);
-						fmt::print(stderr, "Baking lightmap ({}): Object {}/{}: {}%\n", category, object_index + 1, object_count, std::round(current_progress * 100.0f));
+				auto operator()(std::string_view category, std::size_t bounce_index, std::size_t bounce_count, std::size_t object_index, std::size_t object_count,
+					std::size_t mesh_index, std::size_t mesh_count, float progress) -> bool {
+					using namespace std::chrono_literals;
+					if (const auto now = std::chrono::steady_clock::now(); now >= next_print_time) {
+						next_print_time = now + 100ms;
+						fmt::print(stderr, "\r  {}: ", category);
+						if (bounce_count != 0) {
+							fmt::print(stderr, "Bounce {}/{}: ", bounce_index + 1, bounce_count);
+						}
+						if (object_count != 0) {
+							fmt::print(stderr, "Object {}/{}: ", object_index + 1, object_count);
+						}
+						if (mesh_count != 0) {
+							fmt::print(stderr, "Mesh {}/{}: ", mesh_index + 1, mesh_count);
+						}
+						fmt::print(stderr, "{}%                              \r", progress * 100.0f);
 					}
 					return true;
 				}
 
-				std::size_t next_index = 0;
-				float next_progress = 0.0f;
+				std::chrono::steady_clock::time_point next_print_time = std::chrono::steady_clock::now();
 			};
 			fmt::print(stderr, "Baking lightmap...\n");
 			lightmap_generator::generate_lightmap_coordinates(m_scene, progress_callback{});
-			m_lightmap = std::make_shared<texture>(lightmap_generator::bake_lightmap(renderer.model(), renderer.skybox(), m_scene, sky_color, progress_callback{}));
-			fmt::print(stderr, "Baking lightmap: Done!\n");
+			lightmap_generator::bake_lightmap(m_scene, sky_color, lightmap_resolution, lightmap_bounce_count, progress_callback{});
+			fmt::print(stderr, "\nBaking lightmap: Done!\n");
 		} catch (const std::exception& e) {
 			fmt::print(stderr, "Failed to bake lightmap: {}\n", e.what());
 		} catch (...) {
@@ -187,14 +336,16 @@ private:
 	}
 
 	auto save_lightmap() const -> void {
-		if (!m_lightmap) {
+		if (!m_scene.lightmap) {
 			fmt::print(stderr, "No lightmap to save!\n");
 			return;
 		}
 		try {
-			const auto pixels = m_lightmap->read_pixels_2d(lightmap_generator::lightmap_format);
+			const auto pixels = m_scene.lightmap->read_pixels_2d(lightmap_generator::lightmap_format);
 			const auto filename = get_lightmap_filename();
-			save_png(image_view{pixels.data(), m_lightmap->width(), m_lightmap->height(), lightmap_generator::lightmap_channel_count}, filename.c_str(), {.flip_vertically = true});
+			save_png(image_view{pixels.data(), m_scene.lightmap->width(), m_scene.lightmap->height(), lightmap_generator::lightmap_channel_count},
+				filename.c_str(),
+				{.flip_vertically = true});
 			fmt::print(stderr, "Lightmap saved as \"{}\".\n", filename);
 		} catch (const std::exception& e) {
 			fmt::print(stderr, "Failed to save lightmap: {}\n", e.what());
@@ -204,9 +355,11 @@ private:
 	}
 
 	std::string m_filename;
+	std::shared_ptr<model> m_point_light_model;
+	std::shared_ptr<model> m_spot_light_model;
 	scene m_scene;
-	std::shared_ptr<texture> m_lightmap = lightmap_generator::get_default();
 	flight_controller m_controller{vec3{0.0f, 0.0f, 2.0f}, -1.57079632679f, 0.0f};
+	bool m_show_lights = false;
 };
 
 #endif

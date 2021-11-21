@@ -64,7 +64,7 @@ void main() {
 	vec3 albedo = pow(albedo_sample.rgb, vec3(2.2)); // Convert from sRGB to linear.
 	float roughness = texture(material_roughness, io_texture_coordinates).r;
 	float metallic = texture(material_metallic, io_texture_coordinates).r;
-	vec3 lightmap = pow(texture(lightmap_texture, io_lightmap_coordinates).rgb, vec3(2.2));
+	vec3 lightmap = texture(lightmap_texture, io_lightmap_coordinates).rgb;
 
 	vec3 reflectivity = mix(vec3(BASE_REFLECTIVITY), albedo, metallic);
 
@@ -142,7 +142,7 @@ void main() {
 		vec3 light_direction = frag_to_light / light_distance;
 
 		float theta = dot(spot_lights[i].direction, -light_direction);
-		float epsilon = spot_lights[i].outer_cutoff - spot_lights[i].inner_cutoff;
+		float epsilon = spot_lights[i].inner_cutoff - spot_lights[i].outer_cutoff;
 		float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[i].outer_cutoff) / epsilon);
 
 		float attenuation = intensity / (spot_lights[i].constant + spot_lights[i].linear * light_distance + spot_lights[i].quadratic * light_distance_squared);
@@ -159,5 +159,9 @@ void main() {
 			reflectivity);
 	}
 
+#if BAKING
+	out_fragment_color = vec4(Lo + ambient, (gl_FrontFacing) ? alpha : 0.0);
+#else
 	out_fragment_color = vec4(gamma_correct(tonemap(Lo + ambient)), alpha);
+#endif
 }

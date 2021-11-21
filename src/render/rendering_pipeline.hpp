@@ -120,7 +120,7 @@ private:
 	}
 #endif
 
-	model_renderer m_model_renderer{};
+	model_renderer m_model_renderer{false};
 	skybox_renderer m_skybox_renderer{};
 	text_renderer m_text_renderer{};
 	gui_renderer m_gui_renderer;

@@ -33,11 +33,10 @@ struct lightmap_error : std::runtime_error {
 
 class lightmap_generator final {
 public:
-	static constexpr auto lightmap_resolution = std::size_t{4096};
-	static constexpr auto lightmap_channel_count = std::size_t{3};
-	static constexpr auto lightmap_padding = std::size_t{2};
-	static constexpr auto lightmap_internal_format = GLint{GL_RGB16F};
-	static constexpr auto lightmap_format = GLenum{GL_RGB};
+	static constexpr auto lightmap_channel_count = std::size_t{4};
+	static constexpr auto lightmap_padding = std::size_t{4};
+	static constexpr auto lightmap_internal_format = GLint{GL_RGBA16F};
+	static constexpr auto lightmap_format = GLenum{GL_RGBA};
 	static constexpr auto lightmap_type = GLenum{GL_FLOAT};
 	static constexpr auto lightmap_options = texture_options{
 		.max_anisotropy = 1.0f,
@@ -52,33 +51,31 @@ public:
 	static constexpr auto interpolation_threshold = 0.01f;
 	static constexpr auto camera_to_surface_distance_modifier = 0.0f;
 
-	using progress_callback = std::function<bool(std::string_view category, std::size_t object_index, std::size_t object_count, float progress)>;
+	using progress_callback = std::function<bool(std::string_view category, std::size_t bounce_index, std::size_t bounce_count, std::size_t object_index, std::size_t object_count,
+		std::size_t mesh_index, std::size_t mesh_count, float progress)>;
 
-	[[nodiscard]] static auto get_default() -> const std::shared_ptr<texture>& {
-		static constexpr auto default_color = vec3{1.0f, 1.0f, 1.0f};
-		static auto default_lightmap = std::make_shared<texture>(
-			texture::create_2d(lightmap_internal_format, 1, 1, lightmap_format, lightmap_type, glm::value_ptr(default_color), lightmap_options));
-		return default_lightmap;
-	}
-
-	static auto generate_lightmap_coordinates(scene& scene, progress_callback callback) -> void {
+	static auto generate_lightmap_coordinates(scene& scene, const progress_callback& callback) -> void {
 		static_assert(std::is_same_v<model_index, GLuint> && sizeof(model_index) == 4, "This function assumes 32-bit model indices.");
 
 		struct progress_data final {
 			std::size_t object_index;
 			std::size_t object_count;
-			progress_callback& callback;
+			std::size_t mesh_index;
+			std::size_t mesh_count;
+			const progress_callback& callback;
 			std::mutex mutex{};
 
 			auto update(std::string_view category, float progress) -> bool {
 				auto lock = std::lock_guard{mutex};
-				return callback(category, object_index, object_count, progress);
+				return callback(category, 0, 0, object_index, object_count, mesh_index, mesh_count, progress);
 			}
 		};
 
 		auto scene_progress = progress_data{
 			.object_index = 0,
 			.object_count = scene.objects.size(),
+			.mesh_index = 0,
+			.mesh_count = 0,
 			.callback = callback,
 		};
 
@@ -109,6 +106,8 @@ public:
 						return static_cast<progress_data*>(user_data)->update(xatlas::StringForEnum(category), static_cast<float>(progress) * 0.01f);
 					},
 					&scene_progress);
+				scene_progress.mesh_index = 0;
+				scene_progress.mesh_count = object.model_ptr->meshes().size();
 				for (auto& mesh : object.model_ptr->meshes()) {
 					if (const auto error = xatlas::AddMesh(atlas.get(),
 							xatlas::MeshDecl{
@@ -124,7 +123,10 @@ public:
 						error != xatlas::AddMeshError::Success) {
 						throw lightmap_error{xatlas::StringForEnum(error)};
 					}
+					++scene_progress.mesh_index;
 				}
+				scene_progress.mesh_index = 0;
+				scene_progress.mesh_count = 0;
 				xatlas::Generate(atlas.get(),
 					xatlas::ChartOptions{},
 					xatlas::PackOptions{
@@ -204,6 +206,8 @@ public:
 			});
 		scene_progress.object_index = 0;
 		scene_progress.object_count = 0;
+		scene_progress.mesh_index = 0;
+		scene_progress.mesh_count = 0;
 		scene_progress.update("Packing object coordinates", 0.0f);
 		xatlas::Generate(object_atlas.get(),
 			xatlas::ChartOptions{
@@ -211,7 +215,6 @@ public:
 			},
 			xatlas::PackOptions{
 				.padding = static_cast<std::uint32_t>(lightmap_padding),
-				.resolution = static_cast<std::uint32_t>(lightmap_resolution),
 				.rotateChartsToAxis = false,
 				.rotateCharts = false,
 			});
@@ -264,16 +267,21 @@ public:
 		scene_progress.update("Packing object coordinates", 1.0f);
 	}
 
-	[[nodiscard]] static auto bake_lightmap(model_renderer& model_renderer, skybox_renderer& skybox_renderer, const scene& scene, vec3 sky_color, progress_callback callback)
-		-> texture {
+	static auto reset_lightmap(scene& scene, vec3 sky_color) -> void {
+		const auto sky_pixel = std::array<float, 4>{sky_color.x, sky_color.y, sky_color.z, 0.0f};
+		scene.lightmap = std::make_shared<texture>(texture::create_2d(lightmap_internal_format, 1, 1, lightmap_format, lightmap_type, sky_pixel.data(), lightmap_options));
+		scene.default_lightmap_offset = vec2{};
+		scene.default_lightmap_scale = vec2{};
+	}
+
+	static auto bake_lightmap(scene& scene, vec3 sky_color, std::size_t resolution, std::size_t bounce_count, const progress_callback& callback) -> void {
 		static_assert(std::is_same_v<model_index, GLuint> && sizeof(model_index) == 4, "This function assumes 32-bit model indices.");
 
-		const auto default_lightmap = std::make_shared<texture>(
-			texture::create_2d(lightmap_internal_format, 1, 1, lightmap_format, lightmap_type, glm::value_ptr(sky_color), lightmap_options));
+		auto model_baker = model_renderer{true};
+		auto skybox_baker = skybox_renderer{};
 
-		auto pixels = std::vector<float>(lightmap_resolution * lightmap_resolution * lightmap_channel_count, 0.0f);
-		const auto width = static_cast<int>(lightmap_resolution);
-		const auto height = static_cast<int>(lightmap_resolution);
+		const auto width = static_cast<int>(resolution);
+		const auto height = static_cast<int>(resolution);
 		const auto channel_count = static_cast<int>(lightmap_channel_count);
 
 		lightmapper_ptr lightmapper{
@@ -282,94 +290,108 @@ public:
 			throw lightmap_error{"Failed to initialize lightmapper!"};
 		}
 
-		lmSetTargetLightmap(lightmapper.get(), pixels.data(), width, height, channel_count);
+		for (auto bounce_index = std::size_t{0}; bounce_index < bounce_count; ++bounce_index) {
+			auto pixels = std::vector<float>(resolution * resolution * lightmap_channel_count, 0.0f);
+			lmSetTargetLightmap(lightmapper.get(), pixels.data(), width, height, channel_count);
 
-		auto object_index = std::size_t{0};
-		for (auto& object : scene.objects) {
-			for (const auto& mesh : object.model_ptr->meshes()) {
-				auto lightmap_coordinates = std::vector<vec2>();
-				lightmap_coordinates.reserve(mesh.vertices().size());
-				for (const auto& vertex : mesh.vertices()) {
-					lightmap_coordinates.push_back(object.lightmap_offset + vertex.lightmap_coordinates * object.lightmap_scale);
-				}
-				lmSetGeometry(lightmapper.get(),
-					glm::value_ptr(object.transform),
-					LM_FLOAT,
-					glm::value_ptr(mesh.vertices()[0].position),
-					sizeof(model_vertex),
-					LM_FLOAT,
-					glm::value_ptr(mesh.vertices()[0].normal),
-					sizeof(model_vertex),
-					LM_FLOAT,
-					lightmap_coordinates.data(),
-					sizeof(lightmap_coordinates[0]),
-					static_cast<int>(mesh.indices().size()),
-					LM_UNSIGNED_INT, // NOTE: 32-bit model index assumed here.
-					mesh.indices().data());
-				auto viewport = std::array<int, 4>{};
-				auto view_matrix = mat4{};
-				auto projection_matrix = mat4{};
-				while (lmBegin(lightmapper.get(), viewport.data(), glm::value_ptr(view_matrix), glm::value_ptr(projection_matrix))) {
-					try {
-						glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-						model_renderer.resize(projection_matrix);
-						skybox_renderer.resize(projection_matrix);
-						skybox_renderer.draw_skybox(scene.sky->original());
-						model_renderer.draw_lightmap(default_lightmap);
-						model_renderer.draw_environment(scene.sky);
-						for (const auto& light : scene.directional_lights) {
-							model_renderer.draw_directional_light(light);
-						}
-						for (const auto& light : scene.point_lights) {
-							model_renderer.draw_point_light(light);
-						}
-						for (const auto& light : scene.spot_lights) {
-							model_renderer.draw_spot_light(light);
-						}
-						for (const auto& object : scene.objects) {
-							model_renderer.draw_model(object.model_ptr, object.transform, object.lightmap_offset, object.lightmap_scale);
-						}
-						model_renderer.render(view_matrix, vec3{glm::inverse(view_matrix)[3]});
-						skybox_renderer.render(mat3{view_matrix});
-						if (!callback("Baking lightmaps", object_index, scene.objects.size(), lmProgress(lightmapper.get()))) {
-							throw lightmap_error{"Baking cancelled!"};
-						}
-					} catch (...) {
-						lmEnd(lightmapper.get());
-						throw;
+			auto object_index = std::size_t{0};
+			for (auto& object : scene.objects) {
+				auto mesh_index = std::size_t{0};
+				for (const auto& mesh : object.model_ptr->meshes()) {
+					auto lightmap_coordinates = std::vector<vec2>();
+					lightmap_coordinates.reserve(mesh.vertices().size());
+					for (const auto& vertex : mesh.vertices()) {
+						lightmap_coordinates.push_back(object.lightmap_offset + vertex.lightmap_coordinates * object.lightmap_scale);
 					}
-					lmEnd(lightmapper.get());
+					lmSetGeometry(lightmapper.get(),
+						glm::value_ptr(object.transform),
+						LM_FLOAT,
+						glm::value_ptr(mesh.vertices()[0].position),
+						sizeof(model_vertex),
+						LM_FLOAT,
+						glm::value_ptr(mesh.vertices()[0].normal),
+						sizeof(model_vertex),
+						LM_FLOAT,
+						lightmap_coordinates.data(),
+						sizeof(lightmap_coordinates[0]),
+						static_cast<int>(mesh.indices().size()),
+						LM_UNSIGNED_INT, // NOTE: 32-bit model index assumed here.
+						mesh.indices().data());
+					auto viewport = std::array<int, 4>{};
+					auto view_matrix = mat4{};
+					auto projection_matrix = mat4{};
+					while (lmBegin(lightmapper.get(), viewport.data(), glm::value_ptr(view_matrix), glm::value_ptr(projection_matrix))) {
+						try {
+							glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+							model_baker.resize(projection_matrix);
+							skybox_baker.resize(projection_matrix);
+							skybox_baker.draw_skybox(scene.sky->original());
+							model_baker.draw_lightmap(scene.lightmap);
+							model_baker.draw_environment(scene.sky);
+							for (const auto& light : scene.directional_lights) {
+								model_baker.draw_directional_light(light);
+							}
+							for (const auto& light : scene.point_lights) {
+								model_baker.draw_point_light(light);
+							}
+							for (const auto& light : scene.spot_lights) {
+								model_baker.draw_spot_light(light);
+							}
+							for (const auto& object : scene.objects) {
+								model_baker.draw_model(object.model_ptr, object.transform, object.lightmap_offset, object.lightmap_scale);
+							}
+							model_baker.render(view_matrix, vec3{glm::inverse(view_matrix)[3]});
+							skybox_baker.render(mat3{view_matrix});
+							if (!callback("Baking lightmaps",
+									bounce_index,
+									bounce_count,
+									object_index,
+									scene.objects.size(),
+									mesh_index,
+									object.model_ptr->meshes().size(),
+									lmProgress(lightmapper.get()))) {
+								throw lightmap_error{"Baking cancelled!"};
+							}
+						} catch (...) {
+							lmEnd(lightmapper.get());
+							throw;
+						}
+						lmEnd(lightmapper.get());
+					}
+					++mesh_index;
+				}
+				++object_index;
+			}
+
+			const auto lightmap_scale = vec2{static_cast<float>(resolution), static_cast<float>(resolution)};
+			const auto default_offset = scene.default_lightmap_offset * lightmap_scale;
+			const auto default_scale = scene.default_lightmap_scale * lightmap_scale;
+			const auto default_x_begin = static_cast<std::size_t>(default_offset.x);
+			const auto default_x_end = static_cast<std::size_t>(default_offset.x + default_scale.x);
+			const auto default_y_begin = static_cast<std::size_t>(default_offset.y);
+			const auto default_y_end = static_cast<std::size_t>(default_offset.y + default_scale.y);
+			if (default_x_begin > default_x_end || default_y_begin > default_y_end || default_x_end > resolution || default_y_end > resolution) {
+				throw lightmap_error{"Invalid default lightmap pixel coordinates!"};
+			}
+			for (auto y = default_y_begin; y < default_y_end; ++y) {
+				for (auto x = default_x_begin; x < default_x_end; ++x) {
+					auto* const pixel = &pixels[((y * resolution) + x) * lightmap_channel_count];
+					const auto sky_pixel = std::array<float, 4>{sky_color.x, sky_color.y, sky_color.z, 0.0f};
+					std::memcpy(pixel, sky_pixel.data(), lightmap_channel_count);
 				}
 			}
-			++object_index;
-		}
 
-		const auto lightmap_scale = vec2{static_cast<float>(lightmap_resolution), static_cast<float>(lightmap_resolution)};
-		const auto default_offset = scene.default_lightmap_offset * lightmap_scale;
-		const auto default_scale = scene.default_lightmap_scale * lightmap_scale;
-		const auto default_x_begin = static_cast<std::size_t>(default_offset.x);
-		const auto default_x_end = static_cast<std::size_t>(default_offset.x + default_scale.x);
-		const auto default_y_begin = static_cast<std::size_t>(default_offset.y);
-		const auto default_y_end = static_cast<std::size_t>(default_offset.y + default_scale.y);
-		if (default_x_begin > default_x_end || default_y_begin > default_y_end || default_x_end > lightmap_resolution || default_y_end > lightmap_resolution) {
-			throw lightmap_error{"Invalid default lightmap pixel coordinates!"};
-		}
-		for (auto y = default_y_begin; y < default_y_end; ++y) {
-			for (auto x = default_x_begin; x < default_x_end; ++x) {
-				auto* const pixel = &pixels[((y * lightmap_resolution) + x) * lightmap_channel_count];
-				std::memcpy(pixel, glm::value_ptr(sky_color), lightmap_channel_count);
+			auto temp = std::vector<float>(pixels.size(), 0.0f);
+			for (int i = 0; i < 16; ++i) {
+				lmImageDilate(pixels.data(), temp.data(), width, height, channel_count);
+				lmImageDilate(temp.data(), pixels.data(), width, height, channel_count);
 			}
-		}
-
-		auto temp = std::vector<float>(pixels.size(), 0.0f);
-		for (int i = 0; i < 16; ++i) {
-			lmImageDilate(pixels.data(), temp.data(), width, height, channel_count);
+			lmImageSmooth(pixels.data(), temp.data(), width, height, channel_count);
 			lmImageDilate(temp.data(), pixels.data(), width, height, channel_count);
-		}
-		lmImageSmooth(pixels.data(), temp.data(), width, height, channel_count);
-		lmImageDilate(temp.data(), pixels.data(), width, height, channel_count);
 
-		return texture::create_2d(lightmap_internal_format, lightmap_resolution, lightmap_resolution, lightmap_format, lightmap_type, pixels.data(), lightmap_options);
+			scene.lightmap = std::make_shared<texture>(
+				texture::create_2d(lightmap_internal_format, resolution, resolution, lightmap_format, lightmap_type, pixels.data(), lightmap_options));
+		}
 	}
 
 private:

@@ -5,6 +5,7 @@
 #include "../render/rendering_pipeline.hpp"
 #include "../resources/font.hpp"
 #include "../resources/framebuffer.hpp"
+#include "../resources/texture.hpp"
 #include "../resources/viewport.hpp"
 #include "asset_manager.hpp"
 #include "render_loop.hpp"
