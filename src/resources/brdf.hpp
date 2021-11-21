@@ -45,7 +45,11 @@ public:
 		.use_mip_map = false,
 	};
 
-	auto generate_lookup_table(GLint internal_format, std::size_t resolution) const -> texture {
+	auto reload_shaders() -> void {
+		m_lookup_table_shader = lookup_table_shader{};
+	}
+
+	[[nodiscard]] auto generate_lookup_table(GLint internal_format, std::size_t resolution) const -> texture {
 		const auto preserver = state_preserver{};
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
@@ -57,10 +61,6 @@ public:
 		glDrawArrays(brdf_lookup_table_mesh::primitive_type, 0, static_cast<GLsizei>(brdf_lookup_table_mesh::vertices.size()));
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
 		return result;
-	}
-
-	auto reload_shaders() -> void {
-		m_lookup_table_shader = lookup_table_shader{};
 	}
 
 private:
@@ -83,7 +83,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		auto operator=(state_preserver &&) -> state_preserver& = delete;
 
 	private:
 		GLint m_framebuffer_binding = 0;

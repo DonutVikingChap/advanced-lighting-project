@@ -103,7 +103,13 @@ public:
 		.use_mip_map = true,
 	};
 
-	auto generate_cubemap_from_equirectangular_2d(GLint internal_format, const texture& equirectangular_texture, std::size_t resolution) const -> texture {
+	auto reload_shaders() -> void {
+		m_equirectangular_shader = equirectangular_shader{};
+		m_irradiance_shader = irradiance_shader{};
+		m_prefilter_shader = prefilter_shader{};
+	}
+
+	[[nodiscard]] auto generate_cubemap_from_equirectangular_2d(GLint internal_format, const texture& equirectangular_texture, std::size_t resolution) const -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
@@ -120,7 +126,7 @@ public:
 		return result;
 	}
 
-	auto generate_irradiance_map(GLint internal_format, const texture& cubemap_texture, std::size_t resolution) const -> texture {
+	[[nodiscard]] auto generate_irradiance_map(GLint internal_format, const texture& cubemap_texture, std::size_t resolution) const -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
@@ -134,7 +140,7 @@ public:
 		return result;
 	}
 
-	auto generate_prefilter_map(GLint internal_format, const texture& cubemap_texture, std::size_t resolution, std::size_t mip_level_count) -> texture {
+	[[nodiscard]] auto generate_prefilter_map(GLint internal_format, const texture& cubemap_texture, std::size_t resolution, std::size_t mip_level_count) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_CUBE_MAP, GL_TEXTURE_BINDING_CUBE_MAP};
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
@@ -152,12 +158,6 @@ public:
 			m_prefilter_shader.generate(result, mip, mip_resolution);
 		}
 		return result;
-	}
-
-	auto reload_shaders() -> void {
-		m_equirectangular_shader = equirectangular_shader{};
-		m_irradiance_shader = irradiance_shader{};
-		m_prefilter_shader = prefilter_shader{};
 	}
 
 private:
@@ -185,7 +185,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		auto operator=(state_preserver &&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;
@@ -225,7 +225,6 @@ private:
 			for (const auto& view_matrix : view_matrices) {
 				glUniformMatrix3fv(this->view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, result.get(), static_cast<GLint>(level));
-				opengl_context::check_status();
 				opengl_context::check_framebuffer_status();
 				glDrawArrays(cubemap_mesh::primitive_type, 0, static_cast<GLsizei>(cubemap_mesh::vertices.size()));
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, 0, static_cast<GLint>(level));

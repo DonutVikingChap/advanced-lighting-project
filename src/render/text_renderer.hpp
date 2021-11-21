@@ -6,8 +6,6 @@
 #include "../resources/font.hpp"
 #include "../resources/glyph.hpp"
 #include "../resources/shader.hpp"
-#include "../resources/viewport.hpp"
-#include "../utilities/passkey.hpp"
 #include "../utilities/utf8.hpp"
 
 #include <cmath>                // std::round, std::floor
@@ -20,11 +18,16 @@
 #include <utility>              // std::move
 #include <vector>               // std::vector
 
-class rendering_pipeline;
-
 class text_renderer final {
 public:
-	auto resize(passkey<rendering_pipeline>, int width, int height) -> void {
+	auto resize(int width, int height) -> void {
+		m_viewport_height = static_cast<float>(height);
+		m_glyph_shader.resize(width, height);
+	}
+
+	auto reload_shaders(int width, int height) -> void {
+		m_viewport_height = static_cast<float>(height);
+		m_glyph_shader = glyph_shader{};
 		m_glyph_shader.resize(width, height);
 	}
 
@@ -36,7 +39,7 @@ public:
 		m_text_instances[std::move(font)].emplace_back(offset, scale, color, std::u8string{str.begin(), str.end()});
 	}
 
-	auto render(passkey<rendering_pipeline>, const viewport& viewport) -> void {
+	auto render() -> void {
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
@@ -44,15 +47,15 @@ public:
 
 		glUseProgram(m_glyph_shader.program.get());
 		glBindVertexArray(m_glyph_mesh.get());
-		glBindBuffer(GL_ARRAY_BUFFER, m_glyph_mesh.instance_buffer());
+		glBindBuffer(GL_ARRAY_BUFFER, m_glyph_mesh.get_instance_buffer());
 
 		glActiveTexture(GL_TEXTURE0);
 
 		for (const auto& [font, texts] : m_text_instances) {
-			glBindTexture(GL_TEXTURE_2D, font->atlas().get());
+			glBindTexture(GL_TEXTURE_2D, font->atlas_texture().get());
 			m_glyph_instances.clear();
 			for (const auto& text : texts) {
-				add_glyph_instances(*font, text, viewport);
+				add_glyph_instances(*font, text);
 			}
 			glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(m_glyph_instances.size() * sizeof(glyph_instance)), m_glyph_instances.data(), GL_DYNAMIC_DRAW);
 			glDrawArraysInstanced(glyph_mesh::primitive_type, 0, static_cast<GLsizei>(glyph_mesh::vertices.size()), static_cast<GLsizei>(m_glyph_instances.size()));
@@ -63,11 +66,6 @@ public:
 		glDisable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
-	}
-
-	auto reload_shaders(int width, int height) -> void {
-		m_glyph_shader = glyph_shader{};
-		m_glyph_shader.resize(width, height);
 	}
 
 private:
@@ -104,10 +102,9 @@ private:
 		std::u8string str;
 	};
 
-	auto add_glyph_instances(font& font, const text_instance& text, const viewport& viewport) -> void {
+	auto add_glyph_instances(font& font, const text_instance& text) -> void {
 		auto x = text.offset.x;
 		auto y = text.offset.y;
-		const auto top = static_cast<float>(viewport.h);
 		const auto code_points = utf8_view{text.str};
 		for (auto it = code_points.begin(); it != code_points.end();) {
 			if (const auto ch = *it++; ch == '\n') {
@@ -121,7 +118,7 @@ private:
 				};
 				const auto glyph_offset = vec2{
 					std::floor(x) + std::round(glyph.bearing.x * text.scale.x),
-					top - std::floor(y) + std::round(glyph.bearing.y * text.scale.y) - glyph_scale.y,
+					m_viewport_height - std::floor(y) + std::round(glyph.bearing.y * text.scale.y) - glyph_scale.y,
 				};
 				m_glyph_instances.push_back(glyph_instance{glyph_offset, glyph_scale, glyph.texture_offset, glyph.texture_scale, text.color});
 				x += (glyph.advance + font.kerning(ch, (it == code_points.end()) ? 0 : *it)) * text.scale.x;
@@ -135,6 +132,7 @@ private:
 	glyph_shader m_glyph_shader{};
 	text_instance_map m_text_instances{};
 	std::vector<glyph_instance> m_glyph_instances{};
+	float m_viewport_height = 0.0f;
 };
 
 #endif

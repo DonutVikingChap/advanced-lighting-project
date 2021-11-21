@@ -5,28 +5,24 @@
 #include "../core/opengl.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/shader.hpp"
-#include "../utilities/passkey.hpp"
 
-#include <glm/glm.hpp>          // glm::perspective
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <memory>               // std::shared_ptr
 #include <utility>              // std::move
-
-class rendering_pipeline;
 
 class skybox_renderer final {
 public:
 	static constexpr auto gamma = 2.2f;
 
-	auto resize(passkey<rendering_pipeline>, int width, int height, float vertical_fov, float near_z, float far_z) -> void {
-		m_skybox_shader.resize(width, height, vertical_fov, near_z, far_z);
+	auto resize(const mat4& projection_matrix) -> void {
+		m_skybox_shader.resize(projection_matrix);
 	}
 
 	auto draw_skybox(std::shared_ptr<cubemap> texture) -> void {
 		m_skybox_texture = std::move(texture);
 	}
 
-	auto render(passkey<rendering_pipeline>, const mat3& view_matrix) -> void {
+	auto render(const mat3& view_matrix) -> void {
 		if (m_skybox_texture) {
 			glDepthFunc(GL_LEQUAL);
 
@@ -45,9 +41,9 @@ public:
 		}
 	}
 
-	auto reload_shaders(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
+	auto reload_shaders(const mat4& projection_matrix) -> void {
 		m_skybox_shader = skybox_shader{};
-		m_skybox_shader.resize(width, height, vertical_fov, near_z, far_z);
+		m_skybox_shader.resize(projection_matrix);
 	}
 
 private:
@@ -57,9 +53,7 @@ private:
 			glUniform1i(skybox_texture.location(), 0);
 		}
 
-		auto resize(int width, int height, float vertical_fov, float near_z, float far_z) -> void { // NOLINT(readability-make-member-function-const)
-			const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
-			const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
+		auto resize(const mat4& projection_matrix) -> void { // NOLINT(readability-make-member-function-const)
 			glUseProgram(program.get());
 			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 		}

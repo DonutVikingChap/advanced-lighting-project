@@ -157,8 +157,8 @@ public:
 		return size * scale;
 	}
 
-	[[nodiscard]] auto atlas() const noexcept -> const texture& {
-		return m_atlas;
+	[[nodiscard]] auto atlas_texture() const noexcept -> const texture& {
+		return m_atlas_texture;
 	}
 
 private:
@@ -181,56 +181,88 @@ private:
 		GLint m_framebuffer_binding = 0;
 	};
 
-	struct glyph_row final {
-		constexpr glyph_row(std::size_t top, std::size_t width, std::size_t height) noexcept
-			: top(top)
-			, width(width)
-			, height(height) {}
+	class glyph_atlas final {
+	public:
+		static constexpr auto initial_resolution = std::size_t{128};
+		static constexpr auto growth_factor = std::size_t{2};
+		static constexpr auto padding = std::size_t{2};
 
-		std::size_t top;
-		std::size_t width;
-		std::size_t height;
+		struct insert_result final {
+			std::size_t x;
+			std::size_t y;
+			bool resized;
+		};
+
+		[[nodiscard]] auto insert(std::size_t width, std::size_t height) -> insert_result {
+			const auto padded_width = width * padding * std::size_t{2};
+			const auto padded_height = height * padding * std::size_t{2};
+			atlas_row* row_ptr = nullptr;
+			for (auto& row : m_rows) {
+				if (const auto height_ratio = static_cast<float>(padded_height) / static_cast<float>(row.height);
+					height_ratio >= 0.7f && height_ratio <= 1.0f && padded_width <= m_resolution - row.width) {
+					row_ptr = &row;
+					break;
+				}
+			}
+			auto resized = false;
+			if (!row_ptr) {
+				const auto new_row_top = (m_rows.empty()) ? std::size_t{0} : m_rows.back().top + m_rows.back().height;
+				const auto new_row_height = padded_height + padded_height / std::size_t{10};
+				while (m_resolution < new_row_top + new_row_height || m_resolution < padded_width) {
+					m_resolution *= growth_factor;
+					resized = true;
+				}
+				row_ptr = &m_rows.emplace_back(new_row_top, padded_height);
+			}
+			const auto x = row_ptr->width + padding;
+			const auto y = row_ptr->top + padding;
+			row_ptr->width += padded_width;
+			return insert_result{x, y, resized};
+		}
+
+		[[nodiscard]] auto resolution() const noexcept -> std::size_t {
+			return m_resolution;
+		}
+
+	private:
+		struct atlas_row final {
+			atlas_row(std::size_t top, std::size_t height) noexcept
+				: top(top)
+				, height(height) {}
+
+			std::size_t top;
+			std::size_t width = 0;
+			std::size_t height;
+		};
+
+		std::vector<atlas_row> m_rows{};
+		std::size_t m_resolution = initial_resolution;
 	};
 
-	static constexpr auto atlas_initial_size = std::size_t{128};
-	static constexpr auto atlas_growth_factor = std::size_t{2};
-	static constexpr auto atlas_internal_format = GLint{GL_R8};
-	static constexpr auto atlas_options = texture_options{
+	static constexpr auto atlas_texture_internal_format = GLint{GL_R8};
+	static constexpr auto atlas_texture_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
 		.use_linear_filtering = false,
 		.use_mip_map = false,
 	};
 
-	auto find_suitable_glyph_row(std::size_t padded_width, std::size_t padded_height) -> glyph_row* {
-		for (auto& row : m_atlas_rows) {
-			if (const auto height_ratio = static_cast<float>(padded_height) / static_cast<float>(row.height);
-				height_ratio >= 0.7f && height_ratio <= 1.0f && padded_width <= m_atlas.width() - row.width) {
-				return &row;
-			}
-		}
-		return nullptr;
-	}
-
-	auto grow_atlas() -> void {
+	auto resize_atlas_texture() -> void {
 		const auto preserver = state_preserver{};
-		auto new_atlas = texture::create_2d_uninitialized(atlas_internal_format, m_atlas.width() * atlas_growth_factor, m_atlas.height() * atlas_growth_factor, atlas_options);
+		auto new_atlas = texture::create_2d_uninitialized(atlas_texture_internal_format, m_atlas.resolution(), m_atlas.resolution(), atlas_texture_options);
 		auto fbo = framebuffer{};
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
-		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_atlas.get(), 0);
+		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_atlas_texture.get(), 0);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, new_atlas.get(), 0);
 		glDrawBuffer(GL_COLOR_ATTACHMENT1);
 		opengl_context::check_framebuffer_status();
-		const auto width = static_cast<GLint>(m_atlas.width());
-		const auto height = static_cast<GLint>(m_atlas.height());
+		const auto width = static_cast<GLint>(m_atlas_texture.width());
+		const auto height = static_cast<GLint>(m_atlas_texture.height());
 		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, 0, 0);
-		m_atlas = std::move(new_atlas);
-	}
-
-	auto update_texture_coordinates() -> void {
-		const auto texture_size = vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
+		m_atlas_texture = std::move(new_atlas);
+		const auto texture_size = vec2{static_cast<float>(m_atlas_texture.width()), static_cast<float>(m_atlas_texture.height())};
 		for (auto& glyph : m_ascii_glyphs) {
 			glyph.texture_offset = glyph.position / texture_size;
 			glyph.texture_scale = glyph.size / texture_size;
@@ -253,25 +285,15 @@ private:
 			if (m_face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
 				throw font_error{fmt::format("Invalid font glyph pixel mode for char {}!", ch)};
 			}
-			constexpr auto padding = std::size_t{2};
-			const auto padded_width = width + padding * std::size_t{2};
-			const auto padded_height = height + padding * std::size_t{2};
-			auto* row = find_suitable_glyph_row(padded_width, padded_height);
-			if (!row) {
-				const auto new_row_top = (m_atlas_rows.empty()) ? std::size_t{0} : m_atlas_rows.back().top + m_atlas_rows.back().height;
-				const auto new_row_height = padded_height + padded_height / std::size_t{10};
-				while (m_atlas.height() < new_row_top + new_row_height || m_atlas.width() < padded_width) {
-					grow_atlas();
-					update_texture_coordinates();
-				}
-				row = &m_atlas_rows.emplace_back(new_row_top, std::size_t{0}, padded_height);
+			const auto [atlas_x, atlas_y, resized] = m_atlas.insert(width, height);
+			if (resized) {
+				resize_atlas_texture();
 			}
-			x = row->width + padding;
-			y = row->top + padding;
-			m_atlas.paste_2d(width, height, GL_RED, GL_UNSIGNED_BYTE, pixels, x, y);
-			row->width += padded_width;
+			x = atlas_x;
+			y = atlas_y;
+			m_atlas_texture.paste_2d(width, height, GL_RED, GL_UNSIGNED_BYTE, pixels, x, y);
 		}
-		const auto texture_size = vec2{static_cast<float>(m_atlas.width()), static_cast<float>(m_atlas.height())};
+		const auto texture_size = vec2{static_cast<float>(m_atlas_texture.width()), static_cast<float>(m_atlas_texture.height())};
 		const auto position = vec2{static_cast<float>(x), static_cast<float>(y)};
 		const auto size = vec2{static_cast<float>(width), static_cast<float>(height)};
 		return font_glyph{
@@ -292,8 +314,8 @@ private:
 	using face_ptr = std::unique_ptr<std::remove_pointer_t<FT_Face>, face_deleter>;
 
 	face_ptr m_face;
-	texture m_atlas = texture::create_2d_uninitialized(atlas_internal_format, atlas_initial_size, atlas_initial_size, atlas_options);
-	std::vector<glyph_row> m_atlas_rows{};
+	glyph_atlas m_atlas{};
+	texture m_atlas_texture = texture::create_2d_uninitialized(atlas_texture_internal_format, m_atlas.resolution(), m_atlas.resolution(), atlas_texture_options);
 	std::vector<font_glyph> m_ascii_glyphs{};
 	std::unordered_map<char32_t, font_glyph> m_other_glyphs{};
 };

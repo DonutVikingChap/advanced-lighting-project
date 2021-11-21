@@ -3,6 +3,7 @@
 
 #include <cstddef>           // std::byte, std::size_t
 #include <fmt/format.h>      // fmt::format
+#include <span>              // std::span
 #include <stb_image.h>       // stbi_...
 #include <stb_image_write.h> // stbi_write_...
 #include <stdexcept>         // std::runtime_error
@@ -12,6 +13,30 @@ struct image_error : std::runtime_error {
 	explicit image_error(const auto& message)
 		: std::runtime_error(message) {}
 };
+
+template <typename T>
+constexpr auto pixel_set(std::span<T> destination, std::span<const T> source) -> void {
+	assert(destination.size() == source.size());
+	const auto channel_count = source.size();
+	for (auto channel = std::size_t{0}; channel < channel_count; ++channel) {
+		destination[channel] = source[channel];
+	}
+}
+
+template <typename T>
+constexpr auto pixel_blend(std::span<T> destination, std::span<const T> source) -> void {
+	assert(destination.size() == source.size());
+	const auto alpha_channel = source.size() - 1;
+	const auto source_alpha = source[alpha_channel];
+	const auto one_minus_source_alpha = 1.0f - source_alpha;
+	const auto destination_alpha = destination[alpha_channel];
+	const auto alpha = source_alpha + destination_alpha * one_minus_source_alpha;
+	const auto inverse_alpha = 1.0f / alpha;
+	for (auto channel = std::size_t{0}; channel < alpha_channel; ++channel) {
+		destination[channel] = (source[channel] * source_alpha + destination[channel] * destination_alpha * one_minus_source_alpha) * inverse_alpha;
+	}
+	destination[alpha_channel] = alpha;
+}
 
 class image_view final {
 public:
@@ -60,7 +85,7 @@ public:
 		int channel_count = 0;
 		auto* const pixels = stbi_load(filename, &width, &height, &channel_count, options.desired_channel_count);
 		if (!pixels) {
-			throw image_error{fmt::format("Failed to load image \"{}\"!", filename)};
+			throw image_error{fmt::format("Failed to load image \"{}\": {}", filename, stbi_failure_reason())};
 		}
 		return image{pixels, static_cast<std::size_t>(width), static_cast<std::size_t>(height), static_cast<std::size_t>(channel_count)};
 	}
@@ -72,7 +97,7 @@ public:
 		int channel_count = 0;
 		auto* const pixels = stbi_loadf(filename, &width, &height, &channel_count, options.desired_channel_count);
 		if (!pixels) {
-			throw image_error{fmt::format("Failed to load HDR image \"{}\"!", filename)};
+			throw image_error{fmt::format("Failed to load HDR image \"{}\": {}", filename, stbi_failure_reason())};
 		}
 		return image{pixels, static_cast<std::size_t>(width), static_cast<std::size_t>(height), static_cast<std::size_t>(channel_count)};
 	}

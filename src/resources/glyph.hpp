@@ -34,8 +34,8 @@ public:
 		glyph_vertex{{1.0f, 1.0f}, {1.0f, 0.0f}},
 	};
 
-	[[nodiscard]] auto instance_buffer() const noexcept -> GLuint {
-		return m_mesh.instance_buffer();
+	[[nodiscard]] auto get_instance_buffer() const noexcept -> GLuint {
+		return m_mesh.get_instance_buffer();
 	}
 
 	[[nodiscard]] auto get() const noexcept -> GLuint {

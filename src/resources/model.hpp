@@ -34,6 +34,7 @@ struct model_vertex final {
 	vec3 tangent{};
 	vec3 bitangent{};
 	vec2 texture_coordinates{};
+	vec2 lightmap_coordinates{};
 };
 
 using model_index = GLuint;
@@ -52,29 +53,36 @@ public:
 	static constexpr auto primitive_type = GLenum{GL_TRIANGLES};
 	static constexpr auto index_type = GLenum{GL_UNSIGNED_INT};
 
-	model_mesh(std::span<const model_vertex> vertices, std::span<const model_index> indices, const model_material& material)
-		: m_mesh(GL_STATIC_DRAW, GL_STATIC_DRAW, vertices, indices,
+	model_mesh(std::vector<model_vertex> vertices, std::vector<model_index> indices, const model_material& material)
+		: m_vertices(std::move(vertices))
+		, m_indices(std::move(indices))
+		, m_material(material)
+		, m_mesh(GL_STATIC_DRAW, GL_STATIC_DRAW, m_vertices, m_indices,
 			  std::tuple{
 				  &model_vertex::position,
 				  &model_vertex::normal,
 				  &model_vertex::tangent,
 				  &model_vertex::bitangent,
 				  &model_vertex::texture_coordinates,
-			  })
-		, m_material(material)
-		, m_vertex_count(vertices.size())
-		, m_index_count(indices.size()) {}
+				  &model_vertex::lightmap_coordinates,
+			  }) {}
+
+	auto set_vertices(std::vector<model_vertex> vertices, std::vector<model_index> indices) -> void {
+		m_vertices = std::move(vertices);
+		m_indices = std::move(indices);
+		m_mesh.set_vertices(GL_STATIC_DRAW, GL_STATIC_DRAW, m_vertices, m_indices);
+	}
+
+	[[nodiscard]] auto vertices() const noexcept -> std::span<const model_vertex> {
+		return m_vertices;
+	}
+
+	[[nodiscard]] auto indices() const noexcept -> std::span<const model_index> {
+		return m_indices;
+	}
 
 	[[nodiscard]] auto material() const noexcept -> const model_material& {
 		return m_material;
-	}
-
-	[[nodiscard]] auto vertex_count() const noexcept -> std::size_t {
-		return m_vertex_count;
-	}
-
-	[[nodiscard]] auto index_count() const noexcept -> std::size_t {
-		return m_index_count;
 	}
 
 	[[nodiscard]] auto get() const noexcept -> GLuint {
@@ -82,10 +90,10 @@ public:
 	}
 
 private:
-	mesh<model_vertex, model_index> m_mesh;
+	std::vector<model_vertex> m_vertices;
+	std::vector<model_index> m_indices;
 	model_material m_material;
-	std::size_t m_vertex_count;
-	std::size_t m_index_count;
+	mesh<model_vertex, model_index> m_mesh;
 };
 
 using model_texture_cache = std::unordered_map<std::string, std::weak_ptr<texture>>;
@@ -112,6 +120,10 @@ public:
 			throw model_error{fmt::format("Failed to load model \"{}\": {}", filename, e.what())};
 		}
 		return result;
+	}
+
+	[[nodiscard]] auto meshes() noexcept -> std::span<model_mesh> {
+		return m_meshes;
 	}
 
 	[[nodiscard]] auto meshes() const noexcept -> std::span<const model_mesh> {
@@ -183,6 +195,7 @@ private:
 				.tangent = vec3{tangent.x, tangent.y, tangent.z},
 				.bitangent = vec3{bitangent.x, bitangent.y, bitangent.z},
 				.texture_coordinates = vec2{texture_coordinates.x, texture_coordinates.y},
+				.lightmap_coordinates = vec2{texture_coordinates.x, texture_coordinates.y},
 			});
 		}
 

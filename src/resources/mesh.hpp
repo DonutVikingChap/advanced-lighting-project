@@ -105,7 +105,31 @@ public:
 		std::apply([&](auto... attributes) { buffer_instance_data(instances_usage, instances, sizeof...(Ts), attributes...); }, instance_attributes);
 	}
 
-	[[nodiscard]] auto instance_buffer() const noexcept -> GLuint requires(is_instanced) {
+	auto set_vertices(GLenum vertices_usage, std::span<const Vertex> vertices) noexcept -> void requires(!is_indexed) {
+		const auto preserver = state_preserver{};
+		glBindVertexArray(m_vao.get());
+		glBindBuffer(GL_ARRAY_BUFFER, m_vbo.get());
+		glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(Vertex)), vertices.data(), vertices_usage);
+	}
+
+	auto set_vertices(GLenum vertices_usage, GLenum indices_usage, std::span<const Vertex> vertices, std::span<const Index> indices) noexcept -> void requires(is_indexed) {
+		const auto preserver = state_preserver{};
+		glBindVertexArray(m_vao.get());
+		glBindBuffer(GL_ARRAY_BUFFER, m_vbo.get());
+		glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(Vertex)), vertices.data(), vertices_usage);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo.get());
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLsizeiptr>(indices.size() * sizeof(Index)), indices.data(), indices_usage);
+	}
+
+	[[nodiscard]] auto get_vertex_buffer() const noexcept -> GLuint {
+		return m_vbo.get();
+	}
+
+	[[nodiscard]] auto get_index_buffer() const noexcept -> GLuint requires(is_indexed) {
+		return m_ebo.get();
+	}
+
+	[[nodiscard]] auto get_instance_buffer() const noexcept -> GLuint requires(is_instanced) {
 		return m_ibo.get();
 	}
 

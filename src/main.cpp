@@ -1,6 +1,7 @@
 #include "application/application.hpp"
 
 #include <cstddef>      // std::size_t
+#include <cstdio>       // stderr
 #include <cstdlib>      // EXIT_SUCCESS, EXIT_FAILURE
 #include <fmt/format.h> // fmt::print
 #include <span>         // std::span

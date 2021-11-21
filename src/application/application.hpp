@@ -8,7 +8,7 @@
 #include "../resources/viewport.hpp"
 #include "asset_manager.hpp"
 #include "render_loop.hpp"
-#include "scene.hpp"
+#include "world.hpp"
 
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
@@ -64,16 +64,16 @@ private:
 				break;
 			default: break;
 		}
-		m_scene.handle_event(e);
+		m_world.handle_event(e);
 		m_renderer.handle_event(e);
 	}
 
 	auto tick(unsigned int tick_count, float delta_time) -> void override {
-		m_scene.tick(tick_count, delta_time);
+		m_world.tick(tick_count, delta_time);
 	}
 
 	auto update(float elapsed_time, float delta_time) -> void override {
-		m_scene.update(elapsed_time, delta_time);
+		m_world.update(elapsed_time, delta_time);
 		m_renderer.update();
 	}
 
@@ -100,18 +100,18 @@ private:
 			}
 			ImGui::End();
 		}
-		m_scene.draw(m_renderer);
+		m_world.draw(m_renderer);
 		draw_fps_counter();
-		m_renderer.render(framebuffer::get_default(), m_viewport, m_scene.view_matrix(), m_scene.view_position());
+		m_renderer.render(framebuffer::get_default(), m_viewport, m_world.view_matrix(), m_world.view_position());
 	}
 
 	auto enable_gui() -> void {
-		m_scene.controller().stop_controlling();
+		m_world.controller().stop_controlling();
 		m_renderer.gui().enable();
 	}
 
 	auto disable_gui() -> void {
-		m_scene.controller().start_controlling();
+		m_world.controller().start_controlling();
 		m_renderer.gui().disable();
 	}
 
@@ -148,7 +148,7 @@ private:
 	rendering_pipeline m_renderer{get_window(), get_gl_context()};
 	std::shared_ptr<font> m_main_font = m_asset_manager.load_font("assets/fonts/liberation/LiberationSans-Regular.ttf", 32u);
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
-	scene m_scene{m_asset_manager};
+	world m_world{"assets/worlds/world1", m_asset_manager};
 	viewport m_viewport{};
 	float m_max_fps = options.max_fps;
 };

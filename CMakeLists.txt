@@ -23,7 +23,8 @@ target_link_libraries(tsbk03 PRIVATE
 	dependency_lightmapper
 	dependency_OpenGL
 	dependency_SDL2
-	dependency_stb)
+	dependency_stb
+	dependency_xatlas)
 
 if(USE_CLANG_TIDY)
 	find_program(CLANG_TIDY NAMES clang-tidy REQUIRED)

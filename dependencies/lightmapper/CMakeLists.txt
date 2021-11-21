@@ -2,12 +2,17 @@ message(STATUS "Fetching lightmapper...")
 
 FetchContent_Declare(lightmapper
 	GIT_REPOSITORY https://github.com/ands/lightmapper
-	GIT_TAG eeaad30be20158d6164d0becceda8d7d742adc1f # 1
+	GIT_TAG eeaad30be20158d6164d0becceda8d7d742adc1f # 2018-05-14
 )
 FetchContent_MakeAvailable(lightmapper)
 
-add_library(lightmapper STATIC "lightmapper.c")
+add_library(lightmapper STATIC "lightmapper.cpp")
 target_include_directories(lightmapper PUBLIC "${lightmapper_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(lightmapper PRIVATE cxx_std_20)
+target_compile_options(lightmapper PRIVATE
+	$<$<CXX_COMPILER_ID:GNU>:           $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
+	$<$<CXX_COMPILER_ID:Clang>:         $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
+	$<$<CXX_COMPILER_ID:MSVC>:  /utf-8  $<$<CONFIG:Debug>:/Od>  $<$<NOT:$<CONFIG:Debug>>:/Ot>>)
 target_link_libraries(lightmapper PUBLIC
 	dependency_GLEW
 	dependency_OpenGL)
