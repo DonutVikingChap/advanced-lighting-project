@@ -247,7 +247,7 @@ public:
 			if (m_show_lights) {
 				const auto world_up = vec3{0.0f, 1.0f, 0.0f};
 				const auto forward = light.direction;
-				const auto right_cross = glm::cross(forward, world_up);
+				const auto right_cross = cross(forward, world_up);
 				const auto right = (right_cross == vec3{}) ? vec3{1.0f, 0.0f, 0.0f} : normalize(right_cross);
 				const auto up = cross(forward, right);
 				const auto transform = glm::scale(glm::translate(mat4{1.0f}, light.position) *
