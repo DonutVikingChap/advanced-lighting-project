@@ -10,4 +10,5 @@ add_subdirectory(lightmapper) # Depends on GLEW and OpenGL.
 add_subdirectory(SDL2)
 add_subdirectory(stb)
 add_subdirectory(imgui) # Depends on SDL2, GLEW and OpenGL.
-add_subdirectory(xatlas)
+add_subdirectory(Threads)
+add_subdirectory(xatlas) # Depends on Threads.

@@ -13,6 +13,8 @@ target_compile_options(xatlas PRIVATE
 	$<$<CXX_COMPILER_ID:GNU>:           $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
 	$<$<CXX_COMPILER_ID:Clang>:         $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
 	$<$<CXX_COMPILER_ID:MSVC>:  /utf-8  $<$<CONFIG:Debug>:/Od>  $<$<NOT:$<CONFIG:Debug>>:/Ot>>)
+target_link_libraries(xatlas PRIVATE
+	dependency_Threads)
 
 add_library(dependency_xatlas INTERFACE)
 target_include_directories(dependency_xatlas SYSTEM INTERFACE $<TARGET_PROPERTY:xatlas,INTERFACE_INCLUDE_DIRECTORIES>)
