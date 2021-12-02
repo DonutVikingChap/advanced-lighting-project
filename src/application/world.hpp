@@ -217,9 +217,11 @@ public:
 		renderer.model().draw_lightmap(m_scene.lightmap);
 		renderer.model().draw_environment(m_scene.sky);
 		for (const auto& light : m_scene.directional_lights) {
+			renderer.shadow().draw_directional_light(light);
 			renderer.model().draw_directional_light(light);
 		}
 		for (const auto& light : m_scene.point_lights) {
+			renderer.shadow().draw_point_light(light);
 			renderer.model().draw_point_light(light);
 			if (m_show_lights) {
 				renderer.model().draw_model(
@@ -227,6 +229,7 @@ public:
 			}
 		}
 		for (const auto& light : m_scene.spot_lights) {
+			renderer.shadow().draw_spot_light(light);
 			renderer.model().draw_spot_light(light);
 			if (m_show_lights) {
 				const auto world_up = vec3{0.0f, 1.0f, 0.0f};
@@ -246,6 +249,7 @@ public:
 			}
 		}
 		for (const auto& object : m_scene.objects) {
+			renderer.shadow().draw_model(object.model_ptr, object.transform);
 			renderer.model().draw_model(object.model_ptr, object.transform, object.lightmap_offset, object.lightmap_scale);
 		}
 	}

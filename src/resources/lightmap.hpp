@@ -4,6 +4,7 @@
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
 #include "../render/model_renderer.hpp"
+#include "../render/shadow_renderer.hpp"
 #include "../render/skybox_renderer.hpp"
 #include "scene.hpp"
 #include "texture.hpp"
@@ -275,6 +276,23 @@ public:
 
 	static auto bake_lightmap(scene& scene, vec3 sky_color, std::size_t resolution, std::size_t bounce_count, const progress_callback& callback) -> void {
 		static_assert(std::is_same_v<model_index, GLuint> && sizeof(model_index) == 4, "This function assumes 32-bit model indices.");
+
+		{
+			auto shadow_baker = shadow_renderer{};
+			for (const auto& light : scene.directional_lights) {
+				shadow_baker.draw_directional_light(light);
+			}
+			for (const auto& light : scene.point_lights) {
+				shadow_baker.draw_point_light(light);
+			}
+			for (const auto& light : scene.spot_lights) {
+				shadow_baker.draw_spot_light(light);
+			}
+			for (const auto& object : scene.objects) {
+				shadow_baker.draw_model(object.model_ptr, object.transform);
+			}
+			shadow_baker.render(mat4{1.0f}); // TODO: Make a view matrix that covers the entire scene.
+		}
 
 		auto model_baker = model_renderer{true};
 		auto skybox_baker = skybox_renderer{};

@@ -19,7 +19,7 @@
 class shadow_renderer final {
 public:
 	auto draw_directional_light(std::shared_ptr<directional_light> light) -> void {
-		if (light->shadow_map && light->depth_map) {
+		if (light->shadow_map && light->depth_map && light->depth_sampler) {
 			m_directional_lights.push_back(std::move(light));
 		}
 	}
