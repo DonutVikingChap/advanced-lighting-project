@@ -185,7 +185,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver &&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;
@@ -215,12 +215,12 @@ private:
 			glViewport(0, 0, static_cast<GLsizei>(resolution), static_cast<GLsizei>(resolution));
 			auto target = GLenum{GL_TEXTURE_CUBE_MAP_POSITIVE_X};
 			const auto view_matrices = std::array<mat3, 6>{
-				look_at({1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-				look_at({-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-				look_at({0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-				look_at({0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
-				look_at({0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
-				look_at({0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
+				mat3{glm::lookAt(vec3{}, vec3{1.0f, 0.0f, 0.0f}, vec3{0.0f, -1.0f, 0.0f})},
+				mat3{glm::lookAt(vec3{}, vec3{-1.0f, 0.0f, 0.0f}, vec3{0.0f, -1.0f, 0.0f})},
+				mat3{glm::lookAt(vec3{}, vec3{0.0f, 1.0f, 0.0f}, vec3{0.0f, 0.0f, 1.0f})},
+				mat3{glm::lookAt(vec3{}, vec3{0.0f, -1.0f, 0.0f}, vec3{0.0f, 0.0f, -1.0f})},
+				mat3{glm::lookAt(vec3{}, vec3{0.0f, 0.0f, 1.0f}, vec3{0.0f, -1.0f, 0.0f})},
+				mat3{glm::lookAt(vec3{}, vec3{0.0f, 0.0f, -1.0f}, vec3{0.0f, -1.0f, 0.0f})},
 			};
 			for (const auto& view_matrix : view_matrices) {
 				glUniformMatrix3fv(this->view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
@@ -255,10 +255,6 @@ private:
 		shader_uniform cubemap_resolution{program.get(), "cubemap_resolution"};
 		shader_uniform roughness{program.get(), "roughness"};
 	};
-
-	[[nodiscard]] static auto look_at(vec3 direction, vec3 up) -> mat3 {
-		return mat3{glm::lookAt(vec3{}, direction, up)};
-	}
 
 	cubemap_mesh m_cubemap_mesh{};
 	equirectangular_shader m_equirectangular_shader{};

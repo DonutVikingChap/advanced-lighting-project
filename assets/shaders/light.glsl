@@ -14,8 +14,8 @@ struct PointLight {
 	float constant;
 	float linear;
 	float quadratic;
-	float shadow_near_plane;
-	float shadow_far_plane;
+	float shadow_near_z;
+	float shadow_far_z;
 	bool is_shadow_mapped;
 	bool is_active;
 };
@@ -29,8 +29,8 @@ struct SpotLight {
 	float quadratic;
 	float inner_cutoff;
 	float outer_cutoff;
-	float shadow_near_plane;
-	float shadow_far_plane;
+	float shadow_near_z;
+	float shadow_far_z;
 	bool is_shadow_mapped;
 	bool is_active;
 };

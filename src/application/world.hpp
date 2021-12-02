@@ -34,17 +34,18 @@ public:
 			  .directional_lights = {},
 			  .point_lights =
 				  {
-					  {
+					  std::make_shared<point_light>(point_light_options{
 						  .position = {-1.8f, 1.8f, 1.75f},
 						  .color = {0.8f, 0.8f, 0.8f},
 						  .constant = 1.0f,
 						  .linear = 0.045f,
 						  .quadratic = 0.0075f,
-					  },
+						  .is_shadow_mapped = true,
+					  }),
 				  },
 			  .spot_lights =
 				  {
-					  {
+					  std::make_shared<spot_light>(spot_light_options{
 						  .position = {-28.0f, 4.3f, -1.0f},
 						  .direction = vec3{-0.85f, -0.48f, 0.0f},
 						  .color = {1.0f, 1.0f, 1.0f},
@@ -53,7 +54,8 @@ public:
 						  .quadratic = 0.0075f,
 						  .inner_cutoff = cos(radians(20.0f)),
 						  .outer_cutoff = cos(radians(45.0f)),
-					  },
+						  .is_shadow_mapped = true,
+					  }),
 				  },
 			  .objects =
 				  {
@@ -133,21 +135,18 @@ public:
 			ImGui::Separator();
 			if (ImGui::TreeNode("Directional Lights")) {
 				if (ImGui::Button("Add New Directional Light")) {
-					m_scene.directional_lights.push_back(directional_light{
-						.direction = vec3{0.0f, -1.0f, 0.0f},
-						.color = vec3{1.0f, 1.0f, 1.0f},
-					});
+					m_scene.directional_lights.push_back(std::make_shared<directional_light>(directional_light_options{}));
 				}
 				ImGui::Separator();
 				for (auto i = std::size_t{0}; i < m_scene.directional_lights.size(); ++i) {
 					if (ImGui::TreeNodeEx(fmt::format("Directional Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.directional_lights[i].direction), -1.0f, 1.0f)) {
-							m_scene.directional_lights[i].direction = normalize(m_scene.directional_lights[i].direction);
-							if (any(isnan(m_scene.directional_lights[i].direction))) {
-								m_scene.directional_lights[i].direction = vec3{0.0f, -1.0f, 0.0f};
+						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.directional_lights[i]->direction), -1.0f, 1.0f)) {
+							m_scene.directional_lights[i]->direction = normalize(m_scene.directional_lights[i]->direction);
+							if (any(isnan(m_scene.directional_lights[i]->direction))) {
+								m_scene.directional_lights[i]->direction = vec3{0.0f, -1.0f, 0.0f};
 							}
 						}
-						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.directional_lights[i].color), 0.0f, 5.0f);
+						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.directional_lights[i]->color), 0.0f, 5.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.directional_lights.erase(m_scene.directional_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -161,22 +160,16 @@ public:
 			ImGui::Separator();
 			if (ImGui::TreeNode("Point Lights")) {
 				if (ImGui::Button("Add New Point Light")) {
-					m_scene.point_lights.push_back(point_light{
-						.position = vec3{0.0f, 0.0f, 0.0f},
-						.color = vec3{1.0f, 1.0f, 1.0f},
-						.constant = 1.0f,
-						.linear = 0.045f,
-						.quadratic = 0.0075f,
-					});
+					m_scene.point_lights.push_back(std::make_shared<point_light>(point_light_options{}));
 				}
 				ImGui::Separator();
 				for (auto i = std::size_t{0}; i < m_scene.point_lights.size(); ++i) {
 					if (ImGui::TreeNodeEx(fmt::format("Point Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.point_lights[i].position), -50.0f, 50.0f);
-						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.point_lights[i].color), 0.0f, 5.0f);
-						ImGui::SliderFloat("Constant", &m_scene.point_lights[i].constant, 0.0f, 1.0f);
-						ImGui::SliderFloat("Linear", &m_scene.point_lights[i].linear, 0.0f, 1.0f);
-						ImGui::SliderFloat("Quadratic", &m_scene.point_lights[i].quadratic, 0.0f, 1.0f);
+						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.point_lights[i]->position), -50.0f, 50.0f);
+						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.point_lights[i]->color), 0.0f, 5.0f);
+						ImGui::SliderFloat("Constant", &m_scene.point_lights[i]->constant, 0.0f, 1.0f);
+						ImGui::SliderFloat("Linear", &m_scene.point_lights[i]->linear, 0.0f, 1.0f);
+						ImGui::SliderFloat("Quadratic", &m_scene.point_lights[i]->quadratic, 0.0f, 1.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.point_lights.erase(m_scene.point_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -190,33 +183,24 @@ public:
 			ImGui::Separator();
 			if (ImGui::TreeNode("Spot Lights")) {
 				if (ImGui::Button("Add New Spot Light")) {
-					m_scene.spot_lights.push_back(spot_light{
-						.position = vec3{0.0f, 0.0f, 0.0f},
-						.direction = vec3{0.0f, -1.0f, 0.0f},
-						.color = vec3{1.0f, 1.0f, 1.0f},
-						.constant = 1.0f,
-						.linear = 0.045f,
-						.quadratic = 0.0075f,
-						.inner_cutoff = cos(radians(40.0f)),
-						.outer_cutoff = cos(radians(50.0f)),
-					});
+					m_scene.spot_lights.push_back(std::make_shared<spot_light>(spot_light_options{}));
 				}
 				ImGui::Separator();
 				for (auto i = std::size_t{0}; i < m_scene.spot_lights.size(); ++i) {
 					if (ImGui::TreeNodeEx(fmt::format("Spot Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.spot_lights[i].position), -50.0f, 50.0f);
-						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.spot_lights[i].direction), -1.0f, 1.0f)) {
-							m_scene.spot_lights[i].direction = normalize(m_scene.spot_lights[i].direction);
-							if (any(isnan(m_scene.spot_lights[i].direction))) {
-								m_scene.spot_lights[i].direction = vec3{0.0f, -1.0f, 0.0f};
+						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.spot_lights[i]->position), -50.0f, 50.0f);
+						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.spot_lights[i]->direction), -1.0f, 1.0f)) {
+							m_scene.spot_lights[i]->direction = normalize(m_scene.spot_lights[i]->direction);
+							if (any(isnan(m_scene.spot_lights[i]->direction))) {
+								m_scene.spot_lights[i]->direction = vec3{0.0f, -1.0f, 0.0f};
 							}
 						}
-						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.spot_lights[i].color), 0.0f, 5.0f);
-						ImGui::SliderFloat("Constant", &m_scene.spot_lights[i].constant, 0.0f, 1.0f);
-						ImGui::SliderFloat("Linear", &m_scene.spot_lights[i].linear, 0.0f, 1.0f);
-						ImGui::SliderFloat("Quadratic", &m_scene.spot_lights[i].quadratic, 0.0f, 1.0f);
-						ImGui::SliderFloat("Inner cutoff", &m_scene.spot_lights[i].inner_cutoff, 0.0f, 1.0f);
-						ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i].outer_cutoff, 0.0f, 1.0f);
+						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.spot_lights[i]->color), 0.0f, 5.0f);
+						ImGui::SliderFloat("Constant", &m_scene.spot_lights[i]->constant, 0.0f, 1.0f);
+						ImGui::SliderFloat("Linear", &m_scene.spot_lights[i]->linear, 0.0f, 1.0f);
+						ImGui::SliderFloat("Quadratic", &m_scene.spot_lights[i]->quadratic, 0.0f, 1.0f);
+						ImGui::SliderFloat("Inner cutoff", &m_scene.spot_lights[i]->inner_cutoff, 0.0f, 1.0f);
+						ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i]->outer_cutoff, 0.0f, 1.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.spot_lights.erase(m_scene.spot_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -239,18 +223,18 @@ public:
 			renderer.model().draw_point_light(light);
 			if (m_show_lights) {
 				renderer.model().draw_model(
-					m_point_light_model, glm::scale(glm::translate(mat4{1.0f}, light.position), vec3{0.5f}), m_scene.default_lightmap_offset, m_scene.default_lightmap_scale);
+					m_point_light_model, glm::scale(glm::translate(mat4{1.0f}, light->position), vec3{0.5f}), m_scene.default_lightmap_offset, m_scene.default_lightmap_scale);
 			}
 		}
 		for (const auto& light : m_scene.spot_lights) {
 			renderer.model().draw_spot_light(light);
 			if (m_show_lights) {
 				const auto world_up = vec3{0.0f, 1.0f, 0.0f};
-				const auto forward = light.direction;
+				const auto forward = light->direction;
 				const auto right_cross = cross(forward, world_up);
 				const auto right = (right_cross == vec3{}) ? vec3{1.0f, 0.0f, 0.0f} : normalize(right_cross);
 				const auto up = cross(forward, right);
-				const auto transform = glm::scale(glm::translate(mat4{1.0f}, light.position) *
+				const auto transform = glm::scale(glm::translate(mat4{1.0f}, light->position) *
 						mat4{
 							vec4{right, 0.0f},
 							vec4{up, 0.0f},

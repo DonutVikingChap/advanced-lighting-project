@@ -269,8 +269,8 @@ public:
 	static auto reset_lightmap(scene& scene, vec3 sky_color) -> void {
 		const auto sky_pixel = std::array<float, 4>{sky_color.x, sky_color.y, sky_color.z, 0.0f};
 		scene.lightmap = std::make_shared<texture>(texture::create_2d(lightmap_internal_format, 1, 1, lightmap_format, lightmap_type, sky_pixel.data(), lightmap_options));
-		scene.default_lightmap_offset = vec2{};
-		scene.default_lightmap_scale = vec2{};
+		scene.default_lightmap_offset = vec2{0.0f, 0.0f};
+		scene.default_lightmap_scale = vec2{1.0f, 1.0f};
 	}
 
 	static auto bake_lightmap(scene& scene, vec3 sky_color, std::size_t resolution, std::size_t bounce_count, const progress_callback& callback) -> void {

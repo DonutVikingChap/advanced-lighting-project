@@ -10,6 +10,7 @@
 #include "../resources/viewport.hpp"
 #include "gui_renderer.hpp"
 #include "model_renderer.hpp"
+#include "shadow_renderer.hpp"
 #include "skybox_renderer.hpp"
 #include "text_renderer.hpp"
 
@@ -62,6 +63,7 @@ public:
 	auto reload_shaders(int width, int height, float vertical_fov, float near_z, float far_z) -> void {
 		const auto aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
 		const auto projection_matrix = glm::perspective(vertical_fov, aspect_ratio, near_z, far_z);
+		m_shadow_renderer.reload_shaders();
 		m_model_renderer.reload_shaders(projection_matrix);
 		m_skybox_renderer.reload_shaders(projection_matrix);
 		m_text_renderer.reload_shaders(width, height);
@@ -76,6 +78,8 @@ public:
 	}
 
 	auto render(framebuffer& target, const viewport& viewport, const mat4& view_matrix, vec3 view_position) -> void {
+		m_shadow_renderer.render(view_matrix);
+
 		glBindFramebuffer(GL_FRAMEBUFFER, target.get());
 		glViewport(static_cast<GLint>(viewport.x), static_cast<GLint>(viewport.y), static_cast<GLsizei>(viewport.w), static_cast<GLsizei>(viewport.h));
 
@@ -88,6 +92,10 @@ public:
 		m_skybox_renderer.render(mat3{view_matrix});
 		m_text_renderer.render();
 		m_gui_renderer.render();
+	}
+
+	[[nodiscard]] auto shadow() -> shadow_renderer& {
+		return m_shadow_renderer;
 	}
 
 	[[nodiscard]] auto model() -> model_renderer& {
@@ -120,6 +128,7 @@ private:
 	}
 #endif
 
+	shadow_renderer m_shadow_renderer{};
 	model_renderer m_model_renderer{false};
 	skybox_renderer m_skybox_renderer{};
 	text_renderer m_text_renderer{};

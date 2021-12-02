@@ -4,6 +4,7 @@
 #include "../core/handle.hpp"
 #include "../core/opengl.hpp"
 
+#include <array>        // std::array
 #include <cstddef>      // std::byte, std::size_t
 #include <fmt/format.h> // fmt::format
 #include <stdexcept>    // std::invalid_argument
@@ -14,6 +15,7 @@ struct texture_options final {
 	bool repeat = true;
 	bool use_linear_filtering = true;
 	bool use_mip_map = false;
+	bool use_compare_mode = false;
 };
 
 class texture final {
@@ -81,6 +83,10 @@ public:
 		throw std::invalid_argument{fmt::format("Invalid texture channel count \"{}\"!", channel_count)};
 	}
 
+	[[nodiscard]] static constexpr auto null() noexcept {
+		return texture{};
+	}
+
 	[[nodiscard]] static auto create_2d(
 		GLint internal_format, std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels, const texture_options& options) -> texture {
 		const auto preserver = state_preserver{GL_TEXTURE_2D, GL_TEXTURE_BINDING_2D};
@@ -129,6 +135,10 @@ public:
 
 	[[nodiscard]] static auto create_cubemap_uninitialized(GLint internal_format, std::size_t resolution, const texture_options& options) -> texture {
 		return create_cubemap(internal_format, resolution, GL_RED, GL_UNSIGNED_BYTE, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, options);
+	}
+
+	constexpr explicit operator bool() const noexcept {
+		return static_cast<bool>(m_texture);
 	}
 
 	auto paste_2d(std::size_t width, std::size_t height, GLenum format, GLenum type, const void* pixels, std::size_t x, std::size_t y) -> void {
@@ -190,8 +200,18 @@ public:
 	}
 
 private:
+	constexpr texture() noexcept = default;
+
 	texture(GLint internal_format, std::size_t width, std::size_t height)
-		: m_internal_format(internal_format)
+		: m_texture([] {
+			auto p = GLuint{};
+			glGenTextures(1, &p);
+			if (p == 0) {
+				throw opengl_error{"Failed to create texture!"};
+			}
+			return p;
+		}())
+		, m_internal_format(internal_format)
 		, m_width(width)
 		, m_height(height) {}
 
@@ -239,6 +259,10 @@ private:
 			glTexParameteri(target, GL_TEXTURE_MIN_FILTER, (options.use_linear_filtering) ? GL_LINEAR : GL_NEAREST);
 			glTexParameteri(target, GL_TEXTURE_MAG_FILTER, (options.use_linear_filtering) ? GL_LINEAR : GL_NEAREST);
 		}
+		if (options.use_compare_mode) {
+			glTexParameteri(target, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+			glTexParameteri(target, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+		}
 	}
 
 	struct texture_deleter final {
@@ -248,17 +272,72 @@ private:
 	};
 	using texture_ptr = unique_handle<texture_deleter>;
 
-	texture_ptr m_texture{[] {
-		auto tex = GLuint{};
-		glGenTextures(1, &tex);
-		if (tex == 0) {
-			throw opengl_error{"Failed to create texture!"};
+	texture_ptr m_texture{};
+	GLint m_internal_format = 0;
+	std::size_t m_width = 0;
+	std::size_t m_height = 0;
+};
+
+struct sampler_options final {
+	bool repeat = true;
+	bool black_border = false;
+	bool use_linear_filtering = true;
+};
+
+class sampler final {
+public:
+	[[nodiscard]] static constexpr auto null() noexcept {
+		return sampler{};
+	}
+
+	[[nodiscard]] static auto create(const sampler_options& options) -> sampler {
+		return sampler{options};
+	}
+
+	constexpr explicit operator bool() const noexcept {
+		return static_cast<bool>(m_sampler);
+	}
+
+	[[nodiscard]] auto get() const noexcept -> GLuint {
+		return m_sampler.get();
+	}
+
+private:
+	constexpr sampler() noexcept = default;
+
+	explicit sampler(const sampler_options& options)
+		: m_sampler([] {
+			auto p = GLuint{};
+			glGenSamplers(1, &p);
+			if (p == 0) {
+				throw opengl_error{"Failed to create sampler!"};
+			}
+			return p;
+		}()) {
+		if (options.repeat) {
+			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_T, GL_REPEAT);
+		} else if (options.black_border) {
+			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			const auto border_color = std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f};
+			glSamplerParameterfv(m_sampler.get(), GL_TEXTURE_BORDER_COLOR, border_color.data());
+		} else {
+			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
-		return tex;
-	}()};
-	GLint m_internal_format;
-	std::size_t m_width;
-	std::size_t m_height;
+		glSamplerParameteri(m_sampler.get(), GL_TEXTURE_MIN_FILTER, (options.use_linear_filtering) ? GL_LINEAR : GL_NEAREST);
+		glSamplerParameteri(m_sampler.get(), GL_TEXTURE_MAG_FILTER, (options.use_linear_filtering) ? GL_LINEAR : GL_NEAREST);
+	}
+
+	struct sampler_deleter final {
+		auto operator()(GLuint p) const noexcept -> void {
+			glDeleteSamplers(1, &p);
+		}
+	};
+	using sampler_ptr = unique_handle<sampler_deleter>;
+
+	sampler_ptr m_sampler{};
 };
 
 #endif
