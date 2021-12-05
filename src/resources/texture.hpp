@@ -22,6 +22,7 @@ class texture final {
 public:
 	[[nodiscard]] static auto channel_count(GLenum format) -> std::size_t {
 		switch (format) {
+			case GL_DEPTH_COMPONENT: [[fallthrough]];
 			case GL_RED: return 1;
 			case GL_RG: return 2;
 			case GL_RGB: return 3;
@@ -99,7 +100,9 @@ public:
 	}
 
 	[[nodiscard]] static auto create_2d_uninitialized(GLint internal_format, std::size_t width, std::size_t height, const texture_options& options) -> texture {
-		return create_2d(internal_format, width, height, GL_RED, GL_UNSIGNED_BYTE, nullptr, options);
+		const auto format = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
+		const auto type = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
+		return create_2d(internal_format, width, height, format, type, nullptr, options);
 	}
 
 	[[nodiscard]] static auto create_2d_array(GLint internal_format, std::size_t width, std::size_t height, std::size_t depth, GLenum format, GLenum type, const void* pixels,
@@ -134,7 +137,9 @@ public:
 	}
 
 	[[nodiscard]] static auto create_cubemap_uninitialized(GLint internal_format, std::size_t resolution, const texture_options& options) -> texture {
-		return create_cubemap(internal_format, resolution, GL_RED, GL_UNSIGNED_BYTE, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, options);
+		const auto format = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
+		const auto type = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
+		return create_cubemap(internal_format, resolution, format, type, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, options);
 	}
 
 	constexpr explicit operator bool() const noexcept {
@@ -233,7 +238,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver&&) -> state_preserver& = delete;
+		auto operator=(state_preserver &&) -> state_preserver& = delete;
 
 	private:
 		GLenum m_texture_target;

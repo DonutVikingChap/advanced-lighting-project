@@ -19,7 +19,7 @@
 class shadow_renderer final {
 public:
 	auto draw_directional_light(std::shared_ptr<directional_light> light) -> void {
-		if (light->shadow_map && light->depth_map && light->depth_sampler) {
+		if (light->shadow_map) {
 			m_directional_lights.push_back(std::move(light));
 		}
 	}
@@ -78,6 +78,7 @@ public:
 						}
 					}
 				}
+				glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, 0, 0, static_cast<GLint>(cascade_level));
 			}
 		}
 
@@ -105,6 +106,7 @@ public:
 						}
 					}
 				}
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), 0, 0);
 			}
 		}
 
@@ -131,6 +133,7 @@ public:
 					}
 				}
 			}
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, 0, 0);
 		}
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);

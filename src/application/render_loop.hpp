@@ -91,7 +91,7 @@ public:
 	render_loop(const render_loop&) = delete;
 	render_loop(render_loop&&) = delete;
 	auto operator=(const render_loop&) -> render_loop& = delete;
-	auto operator=(render_loop&&) -> render_loop& = delete;
+	auto operator=(render_loop &&) -> render_loop& = delete;
 
 	auto run() -> void {
 		m_start_time = SDL_GetPerformanceCounter();
@@ -140,7 +140,7 @@ private:
 		sdl(const sdl&) = delete;
 		sdl(sdl&&) = delete;
 		auto operator=(const sdl&) -> sdl& = delete;
-		auto operator=(sdl&&) -> sdl& = delete;
+		auto operator=(sdl &&) -> sdl& = delete;
 	};
 
 	struct sdl_initializer final {
@@ -211,9 +211,9 @@ private:
 	};
 	using context_ptr = std::unique_ptr<std::remove_pointer_t<SDL_GLContext>, context_deleter>;
 
+	[[no_unique_address]] sdl_initializer m_sdl_initializer{}; // NOLINT(clang-diagnostic-unknown-attributes)
 	window_ptr m_window{};
 	context_ptr m_gl_context{};
-	[[no_unique_address]] sdl_initializer m_sdl_initializer{}; // NOLINT(clang-diagnostic-unknown-attributes)
 	Uint64 m_clock_frequency;
 	float m_clock_interval;
 	Uint64 m_tick_interval;

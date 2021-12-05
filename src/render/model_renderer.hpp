@@ -3,11 +3,12 @@
 
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
-#include "../resources/brdf.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/light.hpp"
+#include "../resources/lightmap.hpp"
 #include "../resources/model.hpp"
 #include "../resources/shader.hpp"
+#include "brdf_generator.hpp"
 
 #include <algorithm>                  // std::ranges::sort
 #include <array>                      // std::array
@@ -57,7 +58,7 @@ public:
 		m_model_shader_with_alpha_blending.upload_projection_matrix(projection_matrix);
 	}
 
-	auto draw_lightmap(std::shared_ptr<texture> lightmap) -> void {
+	auto draw_lightmap(std::shared_ptr<lightmap_texture> lightmap) -> void {
 		m_lightmap = std::move(lightmap);
 	}
 
@@ -194,8 +195,8 @@ public:
 		glBlendFunc(GL_ONE, GL_ZERO);
 		glDisable(GL_BLEND);
 
-		m_lightmap.reset();
-		m_environment.reset();
+		m_lightmap = lightmap_texture::get_default();
+		m_environment = environment_cubemap::get_default();
 		m_directional_lights.clear();
 		m_point_lights.clear();
 		m_spot_lights.clear();
@@ -312,26 +313,22 @@ private:
 		glUniform3fv(m_model_shader.view_position.location(), 1, glm::value_ptr(view_position));
 
 		// Upload lightmap.
-		if (m_lightmap) {
-			glActiveTexture(GL_TEXTURE0 + lightmap_texture_unit);
-			glBindTexture(GL_TEXTURE_2D, m_lightmap->get());
-			glUniform1i(shader.lightmap_texture.location(), lightmap_texture_unit);
-		}
+		glActiveTexture(GL_TEXTURE0 + lightmap_texture_unit);
+		glBindTexture(GL_TEXTURE_2D, m_lightmap->get());
+		glUniform1i(shader.lightmap_texture.location(), lightmap_texture_unit);
 
 		// Upload environment maps.
-		if (m_environment) {
-			glActiveTexture(GL_TEXTURE0 + environment_cubemap_texture_unit);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->environment_map());
-			glUniform1i(shader.environment_cubemap_texture.location(), environment_cubemap_texture_unit);
+		glActiveTexture(GL_TEXTURE0 + environment_cubemap_texture_unit);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->environment_map());
+		glUniform1i(shader.environment_cubemap_texture.location(), environment_cubemap_texture_unit);
 
-			glActiveTexture(GL_TEXTURE0 + irradiance_cubemap_texture_unit);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->irradiance_map());
-			glUniform1i(shader.irradiance_cubemap_texture.location(), irradiance_cubemap_texture_unit);
+		glActiveTexture(GL_TEXTURE0 + irradiance_cubemap_texture_unit);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->irradiance_map());
+		glUniform1i(shader.irradiance_cubemap_texture.location(), irradiance_cubemap_texture_unit);
 
-			glActiveTexture(GL_TEXTURE0 + prefilter_cubemap_texture_unit);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->prefilter_map());
-			glUniform1i(shader.prefilter_cubemap_texture.location(), prefilter_cubemap_texture_unit);
-		}
+		glActiveTexture(GL_TEXTURE0 + prefilter_cubemap_texture_unit);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, m_environment->prefilter_map());
+		glUniform1i(shader.prefilter_cubemap_texture.location(), prefilter_cubemap_texture_unit);
 
 		// Upload BRDF LUT texture.
 		glActiveTexture(GL_TEXTURE0 + brdf_lookup_table_texture_unit);
@@ -339,110 +336,140 @@ private:
 		glUniform1i(shader.brdf_lookup_table_texture.location(), brdf_lookup_table_texture_unit);
 
 		// Upload directional lights.
-		auto light_index = std::size_t{0};
-		for (const auto& light_ptr : m_directional_lights) {
-			const auto& light = *light_ptr;
-			if (light_index >= shader.directional_lights.size()) {
-				break;
-			}
-			auto& light_uniform = shader.directional_lights[light_index];
-			glUniform3fv(light_uniform.direction.location(), 1, glm::value_ptr(light.direction));
-			glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
-			if (light.shadow_map && light.depth_map && light.depth_sampler) {
-				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
-				const auto shadow_map_texture_unit = directional_light_texture_units_begin + static_cast<GLint>(light_index) * GLint{2};
-				const auto depth_map_texture_unit = shadow_map_texture_unit + GLint{1};
-				glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
-				glBindTexture(GL_TEXTURE_2D_ARRAY, light.shadow_map.get());
-				glUniform1i(shader.directional_shadow_maps[light_index].location(), shadow_map_texture_unit);
-				glActiveTexture(GL_TEXTURE0 + depth_map_texture_unit);
-				glBindTexture(GL_TEXTURE_2D_ARRAY, light.depth_map.get());
-				glBindSampler(depth_map_texture_unit, light.depth_sampler.get());
-				glUniform1i(shader.directional_depth_maps[light_index].location(), depth_map_texture_unit);
-				const auto cascade_offset = light_index * directional_light::csm_cascade_count;
-				for (auto cascade_level = std::size_t{0}; cascade_level < directional_light::csm_cascade_count; ++cascade_level) {
-					glUniformMatrix4fv(
-						shader.directional_shadow_matrices[cascade_offset + cascade_level].location(), 1, GL_FALSE, glm::value_ptr(light.shadow_matrices[cascade_level]));
-					glUniform1f(shader.directional_shadow_uv_sizes[cascade_offset + cascade_level].location(), light.shadow_uv_sizes[cascade_level]);
-					glUniform1f(shader.directional_shadow_near_planes[cascade_offset + cascade_level].location(), light.shadow_near_planes[cascade_level]);
+		for (auto i = std::size_t{0}; i < shader.directional_lights.size(); ++i) {
+			auto& light_uniform = shader.directional_lights[i];
+
+			const auto shadow_map_texture_unit = directional_light_texture_units_begin + static_cast<GLint>(i) * GLint{2};
+			const auto depth_map_texture_unit = shadow_map_texture_unit + GLint{1};
+			glUniform1i(shader.directional_shadow_maps[i].location(), shadow_map_texture_unit);
+			glUniform1i(shader.directional_depth_maps[i].location(), depth_map_texture_unit);
+			if (i < m_directional_lights.size()) {
+				const auto& light = *m_directional_lights[i];
+
+				glUniform3fv(light_uniform.direction.location(), 1, glm::value_ptr(light.direction));
+				glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
+
+				if (light.shadow_map) {
+					glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, light.shadow_map.get());
+
+					glActiveTexture(GL_TEXTURE0 + depth_map_texture_unit);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, light.shadow_map.get());
+					glBindSampler(depth_map_texture_unit, directional_light::depth_sampler());
+
+					const auto cascade_offset = i * directional_light::csm_cascade_count;
+					for (auto cascade_level = std::size_t{0}; cascade_level < directional_light::csm_cascade_count; ++cascade_level) {
+						glUniformMatrix4fv(
+							shader.directional_shadow_matrices[cascade_offset + cascade_level].location(), 1, GL_FALSE, glm::value_ptr(light.shadow_matrices[cascade_level]));
+						glUniform1f(shader.directional_shadow_uv_sizes[cascade_offset + cascade_level].location(), light.shadow_uv_sizes[cascade_level]);
+						glUniform1f(shader.directional_shadow_near_planes[cascade_offset + cascade_level].location(), light.shadow_near_planes[cascade_level]);
+					}
+
+					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
+				} else {
+					glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, directional_light::default_shadow_map());
+
+					glActiveTexture(GL_TEXTURE0 + depth_map_texture_unit);
+					glBindTexture(GL_TEXTURE_2D_ARRAY, directional_light::default_shadow_map());
+					glBindSampler(depth_map_texture_unit, directional_light::depth_sampler());
+
+					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_FALSE);
 				}
+
+				glUniform1i(light_uniform.is_active.location(), GL_TRUE);
 			} else {
-				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_FALSE);
+				glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+				glBindTexture(GL_TEXTURE_2D_ARRAY, directional_light::default_shadow_map());
+
+				glActiveTexture(GL_TEXTURE0 + depth_map_texture_unit);
+				glBindTexture(GL_TEXTURE_2D_ARRAY, directional_light::default_shadow_map());
+				glBindSampler(depth_map_texture_unit, directional_light::depth_sampler());
+
+				glUniform1i(light_uniform.is_active.location(), GL_FALSE);
 			}
-			glUniform1i(light_uniform.is_active.location(), GL_TRUE);
-			++light_index;
-		}
-		for (; light_index < shader.directional_lights.size(); ++light_index) {
-			auto& light_uniform = shader.directional_lights[light_index];
-			glUniform1i(light_uniform.is_active.location(), GL_FALSE);
 		}
 
 		// Upload point lights.
-		light_index = 0;
-		for (const auto& light_ptr : m_point_lights) {
-			const auto& light = *light_ptr;
-			if (light_index >= shader.point_lights.size()) {
-				break;
-			}
-			auto& light_uniform = shader.point_lights[light_index];
-			glUniform3fv(light_uniform.position.location(), 1, glm::value_ptr(light.position));
-			glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
-			glUniform1f(light_uniform.constant.location(), light.constant);
-			glUniform1f(light_uniform.linear.location(), light.linear);
-			glUniform1f(light_uniform.quadratic.location(), light.quadratic);
-			glUniform1f(light_uniform.shadow_near_z.location(), light.shadow_near_z);
-			glUniform1f(light_uniform.shadow_far_z.location(), light.shadow_far_z);
-			if (light.shadow_map) {
-				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
-				const auto shadow_map_texture_unit = point_light_texture_units_begin + static_cast<GLint>(light_index);
-				glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
-				glBindTexture(GL_TEXTURE_CUBE_MAP, light.shadow_map.get());
-				glUniform1i(shader.point_shadow_maps[light_index].location(), shadow_map_texture_unit);
+		for (auto i = std::size_t{0}; i < shader.point_lights.size(); ++i) {
+			auto& light_uniform = shader.point_lights[i];
+
+			const auto shadow_map_texture_unit = point_light_texture_units_begin + static_cast<GLint>(i);
+			glUniform1i(shader.point_shadow_maps[i].location(), shadow_map_texture_unit);
+			if (i < m_point_lights.size()) {
+				const auto& light = *m_point_lights[i];
+
+				glUniform3fv(light_uniform.position.location(), 1, glm::value_ptr(light.position));
+				glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
+				glUniform1f(light_uniform.constant.location(), light.constant);
+				glUniform1f(light_uniform.linear.location(), light.linear);
+				glUniform1f(light_uniform.quadratic.location(), light.quadratic);
+
+				if (light.shadow_map) {
+					glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+					glBindTexture(GL_TEXTURE_CUBE_MAP, light.shadow_map.get());
+
+					glUniform1f(light_uniform.shadow_near_z.location(), light.shadow_near_z);
+					glUniform1f(light_uniform.shadow_far_z.location(), light.shadow_far_z);
+
+					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
+				} else {
+					glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+					glBindTexture(GL_TEXTURE_CUBE_MAP, point_light::default_shadow_map());
+
+					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_FALSE);
+				}
+
+				glUniform1i(light_uniform.is_active.location(), GL_TRUE);
 			} else {
-				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_FALSE);
+				glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+				glBindTexture(GL_TEXTURE_CUBE_MAP, point_light::default_shadow_map());
+
+				glUniform1i(light_uniform.is_active.location(), GL_FALSE);
 			}
-			glUniform1i(light_uniform.is_active.location(), GL_TRUE);
-			++light_index;
-		}
-		for (; light_index < shader.point_lights.size(); ++light_index) {
-			auto& light_uniform = shader.point_lights[light_index];
-			glUniform1i(light_uniform.is_active.location(), GL_FALSE);
 		}
 
 		// Upload spot lights.
-		light_index = 0;
-		for (const auto& light_ptr : m_spot_lights) {
-			const auto& light = *light_ptr;
-			if (light_index >= shader.spot_lights.size()) {
-				break;
-			}
-			auto& light_uniform = shader.spot_lights[light_index];
-			glUniform3fv(light_uniform.position.location(), 1, glm::value_ptr(light.position));
-			glUniform3fv(light_uniform.direction.location(), 1, glm::value_ptr(light.direction));
-			glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
-			glUniform1f(light_uniform.constant.location(), light.constant);
-			glUniform1f(light_uniform.linear.location(), light.linear);
-			glUniform1f(light_uniform.quadratic.location(), light.quadratic);
-			glUniform1f(light_uniform.inner_cutoff.location(), light.inner_cutoff);
-			glUniform1f(light_uniform.outer_cutoff.location(), light.outer_cutoff);
-			glUniform1f(light_uniform.shadow_near_z.location(), light.shadow_near_z);
-			glUniform1f(light_uniform.shadow_far_z.location(), light.shadow_far_z);
-			if (light.shadow_map) {
-				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
-				const auto shadow_map_texture_unit = spot_light_texture_units_begin + static_cast<GLint>(light_index);
-				glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
-				glBindTexture(GL_TEXTURE_2D, light.shadow_map.get());
-				glUniform1i(shader.spot_shadow_maps[light_index].location(), shadow_map_texture_unit);
-				glUniformMatrix4fv(shader.spot_shadow_matrices[light_index].location(), 1, GL_FALSE, glm::value_ptr(light.shadow_matrix));
+		for (auto i = std::size_t{0}; i < shader.spot_lights.size(); ++i) {
+			auto& light_uniform = shader.spot_lights[i];
+
+			const auto shadow_map_texture_unit = spot_light_texture_units_begin + static_cast<GLint>(i);
+			glUniform1i(shader.spot_shadow_maps[i].location(), shadow_map_texture_unit);
+			if (i < m_spot_lights.size()) {
+				const auto& light = *m_spot_lights[i];
+
+				glUniform3fv(light_uniform.position.location(), 1, glm::value_ptr(light.position));
+				glUniform3fv(light_uniform.direction.location(), 1, glm::value_ptr(light.direction));
+				glUniform3fv(light_uniform.color.location(), 1, glm::value_ptr(light.color));
+				glUniform1f(light_uniform.constant.location(), light.constant);
+				glUniform1f(light_uniform.linear.location(), light.linear);
+				glUniform1f(light_uniform.quadratic.location(), light.quadratic);
+				glUniform1f(light_uniform.inner_cutoff.location(), light.inner_cutoff);
+				glUniform1f(light_uniform.outer_cutoff.location(), light.outer_cutoff);
+
+				if (light.shadow_map) {
+					glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+					glBindTexture(GL_TEXTURE_2D, light.shadow_map.get());
+
+					glUniform1f(light_uniform.shadow_near_z.location(), light.shadow_near_z);
+					glUniform1f(light_uniform.shadow_far_z.location(), light.shadow_far_z);
+					glUniformMatrix4fv(shader.spot_shadow_matrices[i].location(), 1, GL_FALSE, glm::value_ptr(light.shadow_matrix));
+
+					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
+				} else {
+					glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+					glBindTexture(GL_TEXTURE_2D, spot_light::default_shadow_map());
+
+					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_FALSE);
+				}
+
+				glUniform1i(light_uniform.is_active.location(), GL_TRUE);
 			} else {
-				glUniform1i(light_uniform.is_shadow_mapped.location(), GL_FALSE);
+				glActiveTexture(GL_TEXTURE0 + shadow_map_texture_unit);
+				glBindTexture(GL_TEXTURE_2D, spot_light::default_shadow_map());
+
+				glUniform1i(light_uniform.is_active.location(), GL_FALSE);
 			}
-			glUniform1i(light_uniform.is_active.location(), GL_TRUE);
-			++light_index;
-		}
-		for (; light_index < shader.spot_lights.size(); ++light_index) {
-			auto& light_uniform = shader.spot_lights[light_index];
-			glUniform1i(light_uniform.is_active.location(), GL_FALSE);
 		}
 	}
 
@@ -450,8 +477,8 @@ private:
 	model_shader m_model_shader{m_baking, false, false};
 	model_shader m_model_shader_with_alpha_test{m_baking, true, false};
 	model_shader m_model_shader_with_alpha_blending{m_baking, false, true};
-	std::shared_ptr<texture> m_lightmap{};
-	std::shared_ptr<environment_cubemap> m_environment{};
+	std::shared_ptr<lightmap_texture> m_lightmap = lightmap_texture::get_default();
+	std::shared_ptr<environment_cubemap> m_environment = environment_cubemap::get_default();
 	std::vector<std::shared_ptr<directional_light>> m_directional_lights{};
 	std::vector<std::shared_ptr<point_light>> m_point_lights{};
 	std::vector<std::shared_ptr<spot_light>> m_spot_lights{};

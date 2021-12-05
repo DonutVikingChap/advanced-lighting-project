@@ -4,8 +4,8 @@
 #include "../core/glsl.hpp"
 #include "cubemap.hpp"
 #include "light.hpp"
+#include "lightmap.hpp"
 #include "model.hpp"
-#include "texture.hpp"
 
 #include <cstddef> // std::size_t
 #include <memory>  // std::shared_ptr
@@ -24,7 +24,7 @@ struct scene final {
 	std::vector<std::shared_ptr<point_light>> point_lights{};
 	std::vector<std::shared_ptr<spot_light>> spot_lights{};
 	std::vector<scene_object> objects{};
-	std::shared_ptr<texture> lightmap{};
+	std::shared_ptr<lightmap_texture> lightmap{};
 	vec2 default_lightmap_offset{0.0f, 0.0f};
 	vec2 default_lightmap_scale{1.0f, 1.0f};
 };

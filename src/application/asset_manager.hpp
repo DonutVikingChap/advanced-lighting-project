@@ -1,6 +1,8 @@
 #ifndef ASSET_MANAGER_HPP
 #define ASSET_MANAGER_HPP
 
+#include "../core/opengl.hpp"
+#include "../render/cubemap_generator.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/font.hpp"
 #include "../resources/image.hpp"
@@ -46,60 +48,81 @@ public:
 		return ptr;
 	}
 
-	[[nodiscard]] auto load_cubemap(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<cubemap> {
+	[[nodiscard]] auto load_cubemap(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<cubemap_texture> {
 		const auto it = m_cubemaps.try_emplace(fmt::format("{}%{}", filename_prefix, extension)).first;
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load(filename_prefix, extension));
+		auto ptr = std::make_shared<cubemap_texture>(cubemap_texture::load(filename_prefix, extension));
 		it->second = ptr;
 		return ptr;
 	}
 
-	[[nodiscard]] auto load_cubemap_hdr(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<cubemap> {
+	[[nodiscard]] auto load_cubemap_hdr(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<cubemap_texture> {
 		const auto it = m_cubemaps_hdr.try_emplace(fmt::format("{}%{}", filename_prefix, extension)).first;
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load_hdr(filename_prefix, extension));
+		auto ptr = std::make_shared<cubemap_texture>(cubemap_texture::load_hdr(filename_prefix, extension));
 		it->second = ptr;
 		return ptr;
 	}
 
-	[[nodiscard]] auto load_cubemap_equirectangular(const char* filename, std::size_t resolution) -> std::shared_ptr<cubemap> {
+	[[nodiscard]] auto load_cubemap_equirectangular(const char* filename, std::size_t resolution) -> std::shared_ptr<cubemap_texture> {
 		const auto it = m_cubemaps.try_emplace(fmt::format("{}@{}", filename, resolution)).first;
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular(m_cubemap_generator, filename, resolution));
+		const auto img = image::load(filename, {.flip_vertically = true});
+		const auto internal_format = texture::internal_pixel_format_ldr(img.channel_count());
+		const auto format = texture::pixel_format(img.channel_count());
+		const auto equirectangular_texture = texture::create_2d(
+			internal_format, img.width(), img.height(), format, GL_UNSIGNED_BYTE, img.data(), cubemap_texture::equirectangular_options);
+		auto ptr = std::make_shared<cubemap_texture>(m_cubemap_generator.generate_cubemap_from_equirectangular_2d(internal_format, equirectangular_texture, resolution));
 		it->second = ptr;
 		return ptr;
 	}
 
-	[[nodiscard]] auto load_cubemap_equirectangular_hdr(const char* filename, std::size_t resolution) -> std::shared_ptr<cubemap> {
+	[[nodiscard]] auto load_cubemap_equirectangular_hdr(const char* filename, std::size_t resolution) -> std::shared_ptr<cubemap_texture> {
 		const auto it = m_cubemaps_hdr.try_emplace(fmt::format("{}@{}", filename, resolution)).first;
 		if (auto ptr = it->second.lock()) {
 			return ptr;
 		}
-		auto ptr = std::make_shared<cubemap>(cubemap::load_equirectangular_hdr(m_cubemap_generator, filename, resolution));
+		const auto img = image::load_hdr(filename, {.flip_vertically = true});
+		const auto internal_format = texture::internal_pixel_format_hdr(img.channel_count());
+		const auto format = texture::pixel_format(img.channel_count());
+		const auto equirectangular_texture = texture::create_2d(internal_format, img.width(), img.height(), format, GL_FLOAT, img.data(), cubemap_texture::equirectangular_options);
+		auto ptr = std::make_shared<cubemap_texture>(m_cubemap_generator.generate_cubemap_from_equirectangular_2d(internal_format, equirectangular_texture, resolution));
 		it->second = ptr;
 		return ptr;
 	}
 
 	[[nodiscard]] auto load_environment_cubemap(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<environment_cubemap> {
-		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap(filename_prefix, extension), default_environment_cubemap_options);
+		auto environment = load_cubemap(filename_prefix, extension);
+		auto irradiance = m_cubemap_generator.generate_irradiance_map(irradiance_map_internal_format, *environment, irradiance_map_resolution);
+		auto prefilter = m_cubemap_generator.generate_prefilter_map(prefilter_map_internal_format, *environment, prefilter_map_resolution, prefilter_map_mip_level_count);
+		return std::make_shared<environment_cubemap>(std::move(environment), std::move(irradiance), std::move(prefilter));
 	}
 
 	[[nodiscard]] auto load_environment_cubemap_hdr(std::string_view filename_prefix, std::string_view extension) -> std::shared_ptr<environment_cubemap> {
-		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap_hdr(filename_prefix, extension), default_environment_cubemap_options);
+		auto environment = load_cubemap_hdr(filename_prefix, extension);
+		auto irradiance = m_cubemap_generator.generate_irradiance_map(irradiance_map_internal_format, *environment, irradiance_map_resolution);
+		auto prefilter = m_cubemap_generator.generate_prefilter_map(prefilter_map_internal_format, *environment, prefilter_map_resolution, prefilter_map_mip_level_count);
+		return std::make_shared<environment_cubemap>(std::move(environment), std::move(irradiance), std::move(prefilter));
 	}
 
 	[[nodiscard]] auto load_environment_cubemap_equirectangular(const char* filename, std::size_t resolution) -> std::shared_ptr<environment_cubemap> {
-		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap_equirectangular(filename, resolution), default_environment_cubemap_options);
+		auto environment = load_cubemap_equirectangular(filename, resolution);
+		auto irradiance = m_cubemap_generator.generate_irradiance_map(irradiance_map_internal_format, *environment, irradiance_map_resolution);
+		auto prefilter = m_cubemap_generator.generate_prefilter_map(prefilter_map_internal_format, *environment, prefilter_map_resolution, prefilter_map_mip_level_count);
+		return std::make_shared<environment_cubemap>(std::move(environment), std::move(irradiance), std::move(prefilter));
 	}
 
 	[[nodiscard]] auto load_environment_cubemap_equirectangular_hdr(const char* filename, std::size_t resolution) -> std::shared_ptr<environment_cubemap> {
-		return std::make_shared<environment_cubemap>(m_cubemap_generator, load_cubemap_equirectangular_hdr(filename, resolution), default_environment_cubemap_options);
+		auto environment = load_cubemap_equirectangular_hdr(filename, resolution);
+		auto irradiance = m_cubemap_generator.generate_irradiance_map(irradiance_map_internal_format, *environment, irradiance_map_resolution);
+		auto prefilter = m_cubemap_generator.generate_prefilter_map(prefilter_map_internal_format, *environment, prefilter_map_resolution, prefilter_map_mip_level_count);
+		return std::make_shared<environment_cubemap>(std::move(environment), std::move(irradiance), std::move(prefilter));
 	}
 
 	[[nodiscard]] auto load_model(std::string filename, std::string_view textures_filename_prefix) -> std::shared_ptr<model> {
@@ -140,15 +163,15 @@ public:
 	}
 
 private:
-	static constexpr auto default_environment_cubemap_options = environment_cubemap_options{
-		.irradiance_map_resolution = 32,
-		.prefilter_map_resolution = 128,
-		.prefilter_map_mip_level_count = 5,
-	};
+	static constexpr auto irradiance_map_internal_format = GLint{GL_RGB16F};
+	static constexpr auto irradiance_map_resolution = std::size_t{32};
+	static constexpr auto prefilter_map_internal_format = GLint{GL_RGB16F};
+	static constexpr auto prefilter_map_resolution = std::size_t{128};
+	static constexpr auto prefilter_map_mip_level_count = std::size_t{5};
 
 	using font_cache = std::unordered_map<std::string, std::weak_ptr<font>>;
 	using image_cache = std::unordered_map<std::string, std::weak_ptr<image>>;
-	using cubemap_cache = std::unordered_map<std::string, std::weak_ptr<cubemap>>;
+	using cubemap_cache = std::unordered_map<std::string, std::weak_ptr<cubemap_texture>>;
 	using model_cache = std::unordered_map<std::string, std::weak_ptr<model>>;
 
 	font_library m_font_library{};

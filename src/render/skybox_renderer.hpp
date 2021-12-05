@@ -18,7 +18,7 @@ public:
 		m_skybox_shader.resize(projection_matrix);
 	}
 
-	auto draw_skybox(std::shared_ptr<cubemap> texture) -> void {
+	auto draw_skybox(std::shared_ptr<cubemap_texture> texture) -> void {
 		m_skybox_texture = std::move(texture);
 	}
 
@@ -73,7 +73,7 @@ private:
 
 	cubemap_mesh m_cubemap_mesh{};
 	skybox_shader m_skybox_shader{};
-	std::shared_ptr<cubemap> m_skybox_texture{};
+	std::shared_ptr<cubemap_texture> m_skybox_texture{};
 };
 
 #endif

@@ -146,8 +146,8 @@ private:
 
 	static constexpr auto mouse_yaw_coefficient = 0.00038397244f;
 	static constexpr auto mouse_pitch_coefficient = -0.00038397244f;
-	static constexpr auto pitch_min = -1.570778847f;
-	static constexpr auto pitch_max = 1.570778847f;
+	static constexpr auto pitch_min = -1.57f;
+	static constexpr auto pitch_max = 1.57f;
 	static constexpr auto min_speed_squared = 0.01f;
 	static constexpr auto up_direction = vec3{0.0f, 1.0f, 0.0f};
 

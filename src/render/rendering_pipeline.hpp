@@ -14,15 +14,15 @@
 #include "skybox_renderer.hpp"
 #include "text_renderer.hpp"
 
-#include <SDL.h>        // SDL_...
-#include <cstdio>       // stderr
-#include <fmt/format.h> // fmt::print
-#include <glm/glm.hpp>  // glm::perspective
-#include <memory>       // std::shared_ptr
-#include <string>       // std::u8string
-#include <string_view>  // std::string_view
-#include <utility>      // std::move
-#include <vector>       // std::vector
+#include <SDL.h>                        // SDL_...
+#include <cstdio>                       // stderr
+#include <fmt/format.h>                 // fmt::print
+#include <glm/gtc/matrix_transform.hpp> // glm::perspective
+#include <memory>                       // std::shared_ptr
+#include <string>                       // std::u8string
+#include <string_view>                  // std::string_view
+#include <utility>                      // std::move
+#include <vector>                       // std::vector
 
 class rendering_pipeline final {
 public:

@@ -8,15 +8,15 @@
 #include "../resources/shader.hpp"
 #include "../utilities/utf8.hpp"
 
-#include <cmath>                // std::round, std::floor
-#include <glm/glm.hpp>          // glm::ortho
-#include <glm/gtc/type_ptr.hpp> // glm::value_ptr
-#include <memory>               // std::shared_ptr
-#include <string>               // std::u8string
-#include <string_view>          // std::string_view
-#include <unordered_map>        // std::unordered_map
-#include <utility>              // std::move
-#include <vector>               // std::vector
+#include <cmath>                        // std::round, std::floor
+#include <glm/gtc/matrix_transform.hpp> // glm::ortho
+#include <glm/gtc/type_ptr.hpp>         // glm::value_ptr
+#include <memory>                       // std::shared_ptr
+#include <string>                       // std::u8string
+#include <string_view>                  // std::string_view
+#include <unordered_map>                // std::unordered_map
+#include <utility>                      // std::move
+#include <vector>                       // std::vector
 
 class text_renderer final {
 public:

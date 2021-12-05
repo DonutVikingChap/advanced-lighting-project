@@ -6,6 +6,7 @@
 #include <glm/glm.hpp> // glm::...
 #include <type_traits> // std::is_same_v
 
+static_assert(std::is_same_v<int, GLint>);
 static_assert(std::is_same_v<float, GLfloat>);
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;

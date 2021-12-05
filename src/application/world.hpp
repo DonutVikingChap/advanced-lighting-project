@@ -2,6 +2,7 @@
 #define WORLD_HPP
 
 #include "../core/glsl.hpp"
+#include "../render/lightmap_generator.hpp"
 #include "../render/rendering_pipeline.hpp"
 #include "../resources/image.hpp"
 #include "../resources/lightmap.hpp"
@@ -10,18 +11,18 @@
 #include "asset_manager.hpp"
 #include "flight_controller.hpp"
 
-#include <SDL.h>                // SDL_...
-#include <chrono>               // std::chrono
-#include <cstddef>              // std::size_t, std::ptrdiff_t
-#include <cstdio>               // stderr
-#include <fmt/format.h>         // fmt::format, fmt::print
-#include <glm/glm.hpp>          // glm::lookAt, glm::translate, glm::scale
-#include <glm/gtc/type_ptr.hpp> // glm::value_ptr
-#include <imgui.h>              // ImGui
-#include <memory>               // std::shared_ptr, std::make_shared
-#include <stdexcept>            // std::exception
-#include <string>               // std::string
-#include <string_view>          // std::string_view
+#include <SDL.h>                        // SDL_...
+#include <chrono>                       // std::chrono
+#include <cstddef>                      // std::size_t, std::ptrdiff_t
+#include <cstdio>                       // stderr
+#include <fmt/format.h>                 // fmt::format, fmt::print
+#include <glm/gtc/matrix_transform.hpp> // glm::lookAt, glm::translate, glm::scale
+#include <glm/gtc/type_ptr.hpp>         // glm::value_ptr
+#include <imgui.h>                      // ImGui
+#include <memory>                       // std::shared_ptr, std::make_shared
+#include <stdexcept>                    // std::exception
+#include <string>                       // std::string
+#include <string_view>                  // std::string_view
 
 class world final {
 public:
@@ -89,7 +90,7 @@ public:
 					  },
 				  },
 		  } {
-		lightmap_generator::reset_lightmap(m_scene, sky_color);
+		lightmap_generator::reset_lightmap(m_scene);
 	}
 
 	auto handle_event(const SDL_Event& e) -> void {
@@ -201,6 +202,13 @@ public:
 						ImGui::SliderFloat("Quadratic", &m_scene.spot_lights[i]->quadratic, 0.0f, 1.0f);
 						ImGui::SliderFloat("Inner cutoff", &m_scene.spot_lights[i]->inner_cutoff, 0.0f, 1.0f);
 						ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i]->outer_cutoff, 0.0f, 1.0f);
+						if (ImGui::Button("Save shadow map")) {
+							const auto filename = fmt::format("spot_light_{}_shadow_map.hdr", i);
+							const auto& shadow_map = m_scene.spot_lights[i]->shadow_map;
+							const auto pixels = shadow_map.read_pixels_2d_hdr(GL_DEPTH_COMPONENT);
+							save_hdr(image_view{pixels.data(), shadow_map.width(), shadow_map.height(), 1}, filename.c_str(), {.flip_vertically = true});
+							fmt::print("Shadow map saved as \"{}\".\n", filename);
+						}
 						if (ImGui::Button("Remove")) {
 							m_scene.spot_lights.erase(m_scene.spot_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -326,11 +334,10 @@ private:
 			return;
 		}
 		try {
-			const auto pixels = m_scene.lightmap->read_pixels_2d(lightmap_generator::lightmap_format);
+			const auto& texture = m_scene.lightmap->get_texture();
+			const auto pixels = texture.read_pixels_2d(lightmap_texture::format);
 			const auto filename = get_lightmap_filename();
-			save_png(image_view{pixels.data(), m_scene.lightmap->width(), m_scene.lightmap->height(), lightmap_generator::lightmap_channel_count},
-				filename.c_str(),
-				{.flip_vertically = true});
+			save_png(image_view{pixels.data(), texture.width(), texture.height(), lightmap_texture::channel_count}, filename.c_str(), {.flip_vertically = true});
 			fmt::print(stderr, "Lightmap saved as \"{}\".\n", filename);
 		} catch (const std::exception& e) {
 			fmt::print(stderr, "Failed to save lightmap: {}\n", e.what());

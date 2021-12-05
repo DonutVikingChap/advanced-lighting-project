@@ -6,11 +6,12 @@
 #include "shader.hpp"
 #include "texture.hpp"
 
-#include <array>        // std::array
-#include <cstddef>      // std::size_t
-#include <fmt/format.h> // fmt::format
-#include <glm/glm.hpp>  // glm::perspective, glm::lookAt
-#include <string_view>  // std::string_view
+#include <array>                        // std::array
+#include <cstddef>                      // std::size_t
+#include <fmt/format.h>                 // fmt::format
+#include <glm/gtc/matrix_transform.hpp> // glm::perspective, glm::lookAt
+#include <limits>                       // std::numeric_limits
+#include <string_view>                  // std::string_view
 
 // clang-format off
 static constexpr auto light_depth_conversion_matrix = mat4{
@@ -32,6 +33,33 @@ struct directional_light_options final {
 
 struct directional_light final {
 	static constexpr auto csm_cascade_count = std::size_t{4};
+	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
+	static constexpr auto shadow_map_options = texture_options{
+		.max_anisotropy = 1.0f,
+		.repeat = false,
+		.use_linear_filtering = true,
+		.use_mip_map = false,
+		.use_compare_mode = true,
+	};
+	static constexpr auto depth_sampler_options = sampler_options{
+		.repeat = false,
+		.black_border = true,
+		.use_linear_filtering = false,
+	};
+
+	[[nodiscard]] static auto default_shadow_map() -> GLuint {
+		static const auto shadow_map = [] {
+			auto depth = std::array<float, 1 * 1 * csm_cascade_count>{};
+			depth.fill(shadow_map_max_depth);
+			return texture::create_2d_array(GL_DEPTH_COMPONENT, 1, 1, csm_cascade_count, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data(), shadow_map_options);
+		}();
+		return shadow_map.get();
+	}
+
+	[[nodiscard]] static auto depth_sampler() -> GLuint {
+		static const auto shared_sampler = sampler::create(depth_sampler_options);
+		return shared_sampler.get();
+	}
 
 	explicit directional_light(const directional_light_options& options)
 		: direction(options.direction)
@@ -39,7 +67,7 @@ struct directional_light final {
 		, shadow_offset_factor(options.shadow_offset_factor)
 		, shadow_offset_units(options.shadow_offset_units) {
 		if (options.is_shadow_mapped) {
-			// TODO: Create shadow map texture/depth map texture/depth sampler.
+			shadow_map = texture::create_2d_array_uninitialized(GL_DEPTH_COMPONENT, options.shadow_resolution, options.shadow_resolution, csm_cascade_count, shadow_map_options);
 		}
 	}
 
@@ -51,8 +79,6 @@ struct directional_light final {
 	std::array<float, csm_cascade_count> shadow_uv_sizes{};
 	std::array<float, csm_cascade_count> shadow_near_planes{};
 	texture shadow_map = texture::null();
-	texture depth_map = texture::null();
-	sampler depth_sampler = sampler::null();
 };
 
 struct point_light_options final {
@@ -70,6 +96,25 @@ struct point_light_options final {
 };
 
 struct point_light final {
+	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
+	static constexpr auto shadow_map_options = texture_options{
+		.max_anisotropy = 1.0f,
+		.repeat = false,
+		.use_linear_filtering = true,
+		.use_mip_map = false,
+		.use_compare_mode = true,
+	};
+
+	[[nodiscard]] static auto default_shadow_map() -> GLuint {
+		static const auto shadow_map = [] {
+			auto depth = std::array<float, 1 * 1>{};
+			depth.fill(shadow_map_max_depth);
+			return texture::create_cubemap(
+				GL_DEPTH_COMPONENT, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data(), depth.data(), depth.data(), depth.data(), depth.data(), depth.data(), shadow_map_options);
+		}();
+		return shadow_map.get();
+	}
+
 	explicit point_light(const point_light_options& options)
 		: position(options.position)
 		, color(options.color)
@@ -81,15 +126,7 @@ struct point_light final {
 		, shadow_offset_factor(options.shadow_offset_factor)
 		, shadow_offset_units(options.shadow_offset_units) {
 		if (options.is_shadow_mapped) {
-			shadow_map = texture::create_cubemap_uninitialized(GL_DEPTH_COMPONENT,
-				options.shadow_resolution,
-				texture_options{
-					.max_anisotropy = 1.0f,
-					.repeat = false,
-					.use_linear_filtering = true,
-					.use_mip_map = false,
-					.use_compare_mode = true,
-				});
+			shadow_map = texture::create_cubemap_uninitialized(GL_DEPTH_COMPONENT, options.shadow_resolution, shadow_map_options);
 			update_shadow_transform();
 		}
 	}
@@ -137,6 +174,24 @@ struct spot_light_options final {
 };
 
 struct spot_light final {
+	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
+	static constexpr auto shadow_map_options = texture_options{
+		.max_anisotropy = 1.0f,
+		.repeat = false,
+		.use_linear_filtering = true,
+		.use_mip_map = false,
+		.use_compare_mode = true,
+	};
+
+	[[nodiscard]] static auto default_shadow_map() -> GLuint {
+		static const auto shadow_map = [] {
+			auto depth = std::array<float, 1 * 1>{};
+			depth.fill(shadow_map_max_depth);
+			return texture::create_2d(GL_DEPTH_COMPONENT, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data(), shadow_map_options);
+		}();
+		return shadow_map.get();
+	}
+
 	explicit spot_light(const spot_light_options& options)
 		: position(options.position)
 		, direction(options.direction)
@@ -151,16 +206,7 @@ struct spot_light final {
 		, shadow_offset_factor(options.shadow_offset_factor)
 		, shadow_offset_units(options.shadow_offset_units) {
 		if (options.is_shadow_mapped) {
-			shadow_map = texture::create_2d_uninitialized(GL_DEPTH_COMPONENT,
-				options.shadow_resolution,
-				options.shadow_resolution,
-				texture_options{
-					.max_anisotropy = 1.0f,
-					.repeat = false,
-					.use_linear_filtering = true,
-					.use_mip_map = false,
-					.use_compare_mode = true,
-				});
+			shadow_map = texture::create_2d_uninitialized(GL_DEPTH_COMPONENT, options.shadow_resolution, options.shadow_resolution, shadow_map_options);
 			update_shadow_transform();
 		}
 	}
