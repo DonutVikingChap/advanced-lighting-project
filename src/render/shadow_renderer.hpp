@@ -45,8 +45,7 @@ public:
 
 		glUseProgram(m_shadow_shader.program.get());
 
-		auto fbo = framebuffer{};
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo.get());
+		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo.get());
 
 		for (auto& light_ptr : m_directional_lights) {
 			auto& light = *light_ptr;
@@ -171,6 +170,7 @@ private:
 	using model_instance_map = std::unordered_map<std::shared_ptr<model>, std::vector<model_instance>>;
 
 	shadow_shader m_shadow_shader{};
+	framebuffer m_fbo{};
 	model_instance_map m_model_instances{};
 	std::vector<std::shared_ptr<directional_light>> m_directional_lights{};
 	std::vector<std::shared_ptr<point_light>> m_point_lights{};
