@@ -16,6 +16,7 @@ struct PointLight {
 	float quadratic;
 	float shadow_near_z;
 	float shadow_far_z;
+	float shadow_filter_radius;
 	bool is_shadow_mapped;
 	bool is_active;
 };
@@ -31,6 +32,7 @@ struct SpotLight {
 	float outer_cutoff;
 	float shadow_near_z;
 	float shadow_far_z;
+	float shadow_filter_radius;
 	bool is_shadow_mapped;
 	bool is_active;
 };

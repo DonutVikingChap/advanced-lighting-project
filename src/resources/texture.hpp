@@ -21,6 +21,10 @@ struct texture_options final {
 
 class texture final {
 public:
+	[[nodiscard]] static auto is_depth_internal_format(GLint format) noexcept -> bool {
+		return format == GL_DEPTH_COMPONENT || format == GL_DEPTH_COMPONENT16 || format == GL_DEPTH_COMPONENT24 || format == GL_DEPTH_COMPONENT32F;
+	}
+
 	[[nodiscard]] static auto channel_count(GLenum format) -> std::size_t {
 		switch (format) {
 			case GL_DEPTH_COMPONENT: [[fallthrough]];
@@ -101,8 +105,9 @@ public:
 	}
 
 	[[nodiscard]] static auto create_2d_uninitialized(GLint internal_format, std::size_t width, std::size_t height, const texture_options& options) -> texture {
-		const auto format = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
-		const auto type = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
+		const auto is_depth = is_depth_internal_format(internal_format);
+		const auto format = (is_depth) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
+		const auto type = (is_depth) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
 		return create_2d(internal_format, width, height, format, type, nullptr, options);
 	}
 
@@ -138,8 +143,9 @@ public:
 	}
 
 	[[nodiscard]] static auto create_cubemap_uninitialized(GLint internal_format, std::size_t resolution, const texture_options& options) -> texture {
-		const auto format = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
-		const auto type = (internal_format == GL_DEPTH_COMPONENT) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
+		const auto is_depth = is_depth_internal_format(internal_format);
+		const auto format = (is_depth) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
+		const auto type = (is_depth) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
 		return create_cubemap(internal_format, resolution, format, type, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, options);
 	}
 

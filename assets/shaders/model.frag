@@ -2,6 +2,7 @@
 #include "gamma.glsl"
 #include "math.glsl"
 #include "pbr.glsl"
+#include "pcf.glsl"
 
 #define BASE_REFLECTIVITY 0.04
 #define MAX_REFLECTION_LOD 4.0
@@ -145,9 +146,8 @@ void main() {
 
 		float visibility = 1.0;
 		if (point_lights[i].is_shadow_mapped) {
-			float depth = cube_depth(-frag_to_light, point_lights[i].shadow_near_z, point_lights[i].shadow_far_z);
-			// TODO: PCF/PCSS
-			visibility = texture(point_shadow_maps[i], vec4(-frag_to_light, depth));
+			float receiver_depth = cube_depth(-frag_to_light, point_lights[i].shadow_near_z, point_lights[i].shadow_far_z);
+			visibility = pcf_filter_cube(point_shadow_maps[i], -frag_to_light, receiver_depth, point_lights[i].shadow_filter_radius);
 		}
 
 		Lo += attenuation * visibility * pbr(
@@ -180,8 +180,7 @@ void main() {
 		if (spot_lights[i].is_shadow_mapped) {
 			vec4 fragment_position_in_light_space = io_fragment_positions_in_spot_light_space[i];
 			vec3 projected_coordinates = fragment_position_in_light_space.xyz / fragment_position_in_light_space.w;
-			// TODO: PCF/PCSS
-			visibility = texture(spot_shadow_maps[i], projected_coordinates);
+			visibility = pcf_filter(spot_shadow_maps[i], projected_coordinates.xy, projected_coordinates.z, spot_lights[i].shadow_filter_radius);
 		}
 
 		Lo += intensity * attenuation * visibility * pbr(

@@ -34,6 +34,8 @@ struct directional_light_options final {
 struct directional_light final {
 	static constexpr auto csm_cascade_count = std::size_t{4};
 	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
+	static constexpr auto shadow_map_internal_format = GLint{GL_DEPTH_COMPONENT};
+	static constexpr auto shadow_map_format = GLenum{GL_DEPTH_COMPONENT};
 	static constexpr auto shadow_map_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
@@ -52,7 +54,7 @@ struct directional_light final {
 		static const auto shadow_map = [] {
 			auto depth = std::array<float, 1 * 1 * csm_cascade_count>{};
 			depth.fill(shadow_map_max_depth);
-			return texture::create_2d_array(GL_DEPTH_COMPONENT, 1, 1, csm_cascade_count, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data(), shadow_map_options);
+			return texture::create_2d_array(shadow_map_internal_format, 1, 1, csm_cascade_count, shadow_map_format, GL_FLOAT, depth.data(), shadow_map_options);
 		}();
 		return shadow_map.get();
 	}
@@ -68,7 +70,8 @@ struct directional_light final {
 		, shadow_offset_factor(options.shadow_offset_factor)
 		, shadow_offset_units(options.shadow_offset_units) {
 		if (options.is_shadow_mapped) {
-			shadow_map = texture::create_2d_array_uninitialized(GL_DEPTH_COMPONENT, options.shadow_resolution, options.shadow_resolution, csm_cascade_count, shadow_map_options);
+			shadow_map = texture::create_2d_array_uninitialized(
+				shadow_map_internal_format, options.shadow_resolution, options.shadow_resolution, csm_cascade_count, shadow_map_options);
 		}
 	}
 
@@ -92,12 +95,15 @@ struct point_light_options final {
 	float shadow_far_z = 100.0f;
 	float shadow_offset_factor = 2.0f;
 	float shadow_offset_units = 128.0f;
+	float shadow_filter_radius = 0.04f;
 	std::size_t shadow_resolution = 1024;
 	bool is_shadow_mapped = true;
 };
 
 struct point_light final {
 	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
+	static constexpr auto shadow_map_internal_format = GLint{GL_DEPTH_COMPONENT};
+	static constexpr auto shadow_map_format = GLenum{GL_DEPTH_COMPONENT};
 	static constexpr auto shadow_map_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
@@ -112,7 +118,7 @@ struct point_light final {
 			auto depth = std::array<float, 1 * 1>{};
 			depth.fill(shadow_map_max_depth);
 			return texture::create_cubemap(
-				GL_DEPTH_COMPONENT, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data(), depth.data(), depth.data(), depth.data(), depth.data(), depth.data(), shadow_map_options);
+				shadow_map_internal_format, 1, shadow_map_format, GL_FLOAT, depth.data(), depth.data(), depth.data(), depth.data(), depth.data(), depth.data(), shadow_map_options);
 		}();
 		return shadow_map.get();
 	}
@@ -126,9 +132,10 @@ struct point_light final {
 		, shadow_near_z(options.shadow_near_z)
 		, shadow_far_z(options.shadow_far_z)
 		, shadow_offset_factor(options.shadow_offset_factor)
-		, shadow_offset_units(options.shadow_offset_units) {
+		, shadow_offset_units(options.shadow_offset_units)
+		, shadow_filter_radius(options.shadow_filter_radius) {
 		if (options.is_shadow_mapped) {
-			shadow_map = texture::create_cubemap_uninitialized(GL_DEPTH_COMPONENT, options.shadow_resolution, shadow_map_options);
+			shadow_map = texture::create_cubemap_uninitialized(shadow_map_internal_format, options.shadow_resolution, shadow_map_options);
 			update_shadow_transform();
 		}
 	}
@@ -154,6 +161,7 @@ struct point_light final {
 	float shadow_far_z;
 	float shadow_offset_factor;
 	float shadow_offset_units;
+	float shadow_filter_radius;
 	std::array<mat4, 6> shadow_projection_view_matrices{};
 	texture shadow_map = texture::null();
 };
@@ -171,12 +179,15 @@ struct spot_light_options final {
 	float shadow_far_z = 100.0f;
 	float shadow_offset_factor = 2.0f;
 	float shadow_offset_units = 128.0f;
+	float shadow_filter_radius = 2.0f;
 	std::size_t shadow_resolution = 1024;
 	bool is_shadow_mapped = true;
 };
 
 struct spot_light final {
 	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
+	static constexpr auto shadow_map_internal_format = GLint{GL_DEPTH_COMPONENT};
+	static constexpr auto shadow_map_format = GLenum{GL_DEPTH_COMPONENT};
 	static constexpr auto shadow_map_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
@@ -190,7 +201,7 @@ struct spot_light final {
 		static const auto shadow_map = [] {
 			auto depth = std::array<float, 1 * 1>{};
 			depth.fill(shadow_map_max_depth);
-			return texture::create_2d(GL_DEPTH_COMPONENT, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data(), shadow_map_options);
+			return texture::create_2d(shadow_map_internal_format, 1, 1, shadow_map_format, GL_FLOAT, depth.data(), shadow_map_options);
 		}();
 		return shadow_map.get();
 	}
@@ -207,9 +218,10 @@ struct spot_light final {
 		, shadow_near_z(options.shadow_near_z)
 		, shadow_far_z(options.shadow_far_z)
 		, shadow_offset_factor(options.shadow_offset_factor)
-		, shadow_offset_units(options.shadow_offset_units) {
+		, shadow_offset_units(options.shadow_offset_units)
+		, shadow_filter_radius(options.shadow_filter_radius) {
 		if (options.is_shadow_mapped) {
-			shadow_map = texture::create_2d_uninitialized(GL_DEPTH_COMPONENT, options.shadow_resolution, options.shadow_resolution, shadow_map_options);
+			shadow_map = texture::create_2d_uninitialized(shadow_map_internal_format, options.shadow_resolution, options.shadow_resolution, shadow_map_options);
 			update_shadow_transform();
 		}
 	}
@@ -233,6 +245,7 @@ struct spot_light final {
 	float shadow_far_z;
 	float shadow_offset_factor;
 	float shadow_offset_units;
+	float shadow_filter_radius;
 	mat4 shadow_projection_view_matrix{};
 	mat4 shadow_matrix{};
 	texture shadow_map = texture::null();
@@ -260,6 +273,7 @@ struct point_light_uniform final {
 		, quadratic(program, fmt::format("{}.quadratic", name).c_str())
 		, shadow_near_z(program, fmt::format("{}.shadow_near_z", name).c_str())
 		, shadow_far_z(program, fmt::format("{}.shadow_far_z", name).c_str())
+		, shadow_filter_radius(program, fmt::format("{}.shadow_filter_radius", name).c_str())
 		, is_shadow_mapped(program, fmt::format("{}.is_shadow_mapped", name).c_str())
 		, is_active(program, fmt::format("{}.is_active", name).c_str()) {}
 
@@ -270,6 +284,7 @@ struct point_light_uniform final {
 	shader_uniform quadratic;
 	shader_uniform shadow_near_z;
 	shader_uniform shadow_far_z;
+	shader_uniform shadow_filter_radius;
 	shader_uniform is_shadow_mapped;
 	shader_uniform is_active;
 };
@@ -286,6 +301,7 @@ struct spot_light_uniform final {
 		, outer_cutoff(program, fmt::format("{}.outer_cutoff", name).c_str())
 		, shadow_near_z(program, fmt::format("{}.shadow_near_z", name).c_str())
 		, shadow_far_z(program, fmt::format("{}.shadow_far_z", name).c_str())
+		, shadow_filter_radius(program, fmt::format("{}.shadow_filter_radius", name).c_str())
 		, is_shadow_mapped(program, fmt::format("{}.is_shadow_mapped", name).c_str())
 		, is_active(program, fmt::format("{}.is_active", name).c_str()) {}
 
@@ -299,6 +315,7 @@ struct spot_light_uniform final {
 	shader_uniform outer_cutoff;
 	shader_uniform shadow_near_z;
 	shader_uniform shadow_far_z;
+	shader_uniform shadow_filter_radius;
 	shader_uniform is_shadow_mapped;
 	shader_uniform is_active;
 };

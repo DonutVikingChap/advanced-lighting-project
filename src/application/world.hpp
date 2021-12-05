@@ -175,8 +175,15 @@ public:
 						ImGui::SliderFloat("Constant", &m_scene.point_lights[i]->constant, 0.0f, 1.0f);
 						ImGui::SliderFloat("Linear", &m_scene.point_lights[i]->linear, 0.0f, 1.0f);
 						ImGui::SliderFloat("Quadratic", &m_scene.point_lights[i]->quadratic, 0.0f, 1.0f);
-						ImGui::SliderFloat("Shadow offset factor", &m_scene.point_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
+						if (ImGui::SliderFloat("Shadow near z", &m_scene.point_lights[i]->shadow_near_z, 0.0f, 1.0f)) {
+							m_scene.point_lights[i]->update_shadow_transform();
+						}
+						if (ImGui::SliderFloat("Shadow far z", &m_scene.point_lights[i]->shadow_far_z, 1.0f, 1000.0f)) {
+							m_scene.point_lights[i]->update_shadow_transform();
+						}
+						ImGui::SliderFloat("Shadow offset factor", &m_scene.point_lights[i]->shadow_offset_factor, 0.0f, 32.0f);
 						ImGui::SliderFloat("Shadow offset units", &m_scene.point_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
+						ImGui::SliderFloat("Shadow filter radius", &m_scene.point_lights[i]->shadow_filter_radius, 0.0f, 1.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.point_lights.erase(m_scene.point_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -215,8 +222,15 @@ public:
 						if (ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i]->outer_cutoff, 0.0f, 1.0f)) {
 							m_scene.spot_lights[i]->update_shadow_transform();
 						}
-						ImGui::SliderFloat("Shadow offset factor", &m_scene.spot_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
+						if (ImGui::SliderFloat("Shadow near z", &m_scene.spot_lights[i]->shadow_near_z, 0.0f, 1.0f)) {
+							m_scene.spot_lights[i]->update_shadow_transform();
+						}
+						if (ImGui::SliderFloat("Shadow far z", &m_scene.spot_lights[i]->shadow_far_z, 1.0f, 1000.0f)) {
+							m_scene.spot_lights[i]->update_shadow_transform();
+						}
+						ImGui::SliderFloat("Shadow offset factor", &m_scene.spot_lights[i]->shadow_offset_factor, 0.0f, 32.0f);
 						ImGui::SliderFloat("Shadow offset units", &m_scene.spot_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
+						ImGui::SliderFloat("Shadow filter radius", &m_scene.spot_lights[i]->shadow_filter_radius, 0.0f, 10.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.spot_lights.erase(m_scene.spot_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;

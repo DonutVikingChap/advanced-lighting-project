@@ -411,6 +411,7 @@ private:
 
 					glUniform1f(light_uniform.shadow_near_z.location(), light.shadow_near_z);
 					glUniform1f(light_uniform.shadow_far_z.location(), light.shadow_far_z);
+					glUniform1f(light_uniform.shadow_filter_radius.location(), light.shadow_filter_radius);
 
 					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
 				} else {
@@ -453,6 +454,7 @@ private:
 
 					glUniform1f(light_uniform.shadow_near_z.location(), light.shadow_near_z);
 					glUniform1f(light_uniform.shadow_far_z.location(), light.shadow_far_z);
+					glUniform1f(light_uniform.shadow_filter_radius.location(), light.shadow_filter_radius);
 					glUniformMatrix4fv(shader.spot_shadow_matrices[i].location(), 1, GL_FALSE, glm::value_ptr(light.shadow_matrix));
 
 					glUniform1i(light_uniform.is_shadow_mapped.location(), GL_TRUE);
