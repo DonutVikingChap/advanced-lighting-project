@@ -13,6 +13,7 @@
 struct texture_options final {
 	float max_anisotropy = 1.0f;
 	bool repeat = true;
+	bool black_border = false;
 	bool use_linear_filtering = true;
 	bool use_mip_map = false;
 	bool use_compare_mode = false;
@@ -249,10 +250,26 @@ private:
 
 	static auto set_options(GLenum target, const texture_options& options) noexcept -> void {
 		glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY, options.max_anisotropy);
-		glTexParameteri(target, GL_TEXTURE_WRAP_S, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-		glTexParameteri(target, GL_TEXTURE_WRAP_T, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
-		if (target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_CUBE_MAP_ARRAY) {
-			glTexParameteri(target, GL_TEXTURE_WRAP_R, (options.repeat) ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+		if (options.repeat) {
+			glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			if (target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_CUBE_MAP_ARRAY) {
+				glTexParameteri(target, GL_TEXTURE_WRAP_R, GL_REPEAT);
+			}
+		} else if (options.black_border) {
+			glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+			glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+			if (target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_CUBE_MAP_ARRAY) {
+				glTexParameteri(target, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+			}
+			constexpr auto border_color = std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f};
+			glTexParameterfv(target, GL_TEXTURE_BORDER_COLOR, border_color.data());
+		} else {
+			glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			if (target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_CUBE_MAP_ARRAY) {
+				glTexParameteri(target, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+			}
 		}
 		if (options.use_mip_map) {
 			glGenerateMipmap(target);
@@ -325,7 +342,7 @@ private:
 		} else if (options.black_border) {
 			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-			const auto border_color = std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f};
+			constexpr auto border_color = std::array<float, 4>{1.0f, 1.0f, 1.0f, 1.0f};
 			glSamplerParameterfv(m_sampler.get(), GL_TEXTURE_BORDER_COLOR, border_color.data());
 		} else {
 			glSamplerParameteri(m_sampler.get(), GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

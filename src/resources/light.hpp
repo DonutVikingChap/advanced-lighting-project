@@ -37,6 +37,7 @@ struct directional_light final {
 	static constexpr auto shadow_map_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
+		.black_border = true,
 		.use_linear_filtering = true,
 		.use_mip_map = false,
 		.use_compare_mode = true,
@@ -100,6 +101,7 @@ struct point_light final {
 	static constexpr auto shadow_map_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
+		.black_border = false,
 		.use_linear_filtering = true,
 		.use_mip_map = false,
 		.use_compare_mode = true,
@@ -137,7 +139,7 @@ struct point_light final {
 			projection_matrix * glm::lookAt(position, position + vec3{1.0f, 0.0f, 0.0f}, vec3{0.0f, -1.0f, 0.0f}),
 			projection_matrix * glm::lookAt(position, position + vec3{-1.0f, 0.0f, 0.0f}, vec3{0.0f, -1.0f, 0.0f}),
 			projection_matrix * glm::lookAt(position, position + vec3{0.0f, 1.0f, 0.0f}, vec3{0.0f, 0.0f, 1.0f}),
-			projection_matrix * glm::lookAt(position, position + vec3{0.0f, -1.0f, 0.0f}, vec3{0.0f, 0.0f, 1.0f}),
+			projection_matrix * glm::lookAt(position, position + vec3{0.0f, -1.0f, 0.0f}, vec3{0.0f, 0.0f, -1.0f}),
 			projection_matrix * glm::lookAt(position, position + vec3{0.0f, 0.0f, 1.0f}, vec3{0.0f, -1.0f, 0.0f}),
 			projection_matrix * glm::lookAt(position, position + vec3{0.0f, 0.0f, -1.0f}, vec3{0.0f, -1.0f, 0.0f}),
 		};
@@ -178,6 +180,7 @@ struct spot_light final {
 	static constexpr auto shadow_map_options = texture_options{
 		.max_anisotropy = 1.0f,
 		.repeat = false,
+		.black_border = true,
 		.use_linear_filtering = true,
 		.use_mip_map = false,
 		.use_compare_mode = true,
@@ -212,7 +215,7 @@ struct spot_light final {
 	}
 
 	auto update_shadow_transform() -> void {
-		const auto projection_matrix = glm::perspective(acos(outer_cutoff), 1.0f, shadow_near_z, shadow_far_z);
+		const auto projection_matrix = glm::perspective(2.0f * acos(outer_cutoff), 1.0f, shadow_near_z, shadow_far_z);
 		const auto view_matrix = glm::lookAt(position, position + direction, vec3{0.0f, 1.0f, 0.0f});
 		shadow_projection_view_matrix = projection_matrix * view_matrix;
 		shadow_matrix = light_depth_conversion_matrix * shadow_projection_view_matrix;

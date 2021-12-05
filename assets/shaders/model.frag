@@ -147,8 +147,7 @@ void main() {
 		if (point_lights[i].is_shadow_mapped) {
 			float depth = cube_depth(-frag_to_light, point_lights[i].shadow_near_z, point_lights[i].shadow_far_z);
 			// TODO: PCF/PCSS
-			// TODO: Fix
-			//visibility = texture(point_shadow_maps[i], vec4(-frag_to_light, depth));
+			visibility = texture(point_shadow_maps[i], vec4(-frag_to_light, depth));
 		}
 
 		Lo += attenuation * visibility * pbr(
@@ -169,9 +168,9 @@ void main() {
 		vec3 frag_to_light = spot_lights[i].position - io_fragment_position;
 		float light_distance_squared = dot(frag_to_light, frag_to_light);
 		float light_distance = sqrt(light_distance_squared);
-		vec3 light_direction = frag_to_light / light_distance;
+		vec3 light_direction = frag_to_light * (1.0 / light_distance);
 
-		float theta = dot(spot_lights[i].direction, -light_direction);
+		float theta = dot(light_direction, -spot_lights[i].direction);
 		float epsilon = spot_lights[i].inner_cutoff - spot_lights[i].outer_cutoff;
 		float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[i].outer_cutoff) / epsilon);
 
@@ -182,8 +181,7 @@ void main() {
 			vec4 fragment_position_in_light_space = io_fragment_positions_in_spot_light_space[i];
 			vec3 projected_coordinates = fragment_position_in_light_space.xyz / fragment_position_in_light_space.w;
 			// TODO: PCF/PCSS
-			// TODO: Fix
-			//visibility = texture(spot_shadow_maps[i], projected_coordinates);
+			visibility = texture(spot_shadow_maps[i], projected_coordinates);
 		}
 
 		Lo += intensity * attenuation * visibility * pbr(

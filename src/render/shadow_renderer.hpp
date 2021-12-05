@@ -18,6 +18,12 @@
 
 class shadow_renderer final {
 public:
+	shadow_renderer() {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo.get());
+		glDrawBuffer(GL_NONE);
+		glReadBuffer(GL_NONE);
+	}
+
 	auto draw_directional_light(std::shared_ptr<directional_light> light) -> void {
 		if (light->shadow_map) {
 			m_directional_lights.push_back(std::move(light));
@@ -59,8 +65,6 @@ public:
 
 			for (auto cascade_level = std::size_t{0}; cascade_level < directional_light::csm_cascade_count; ++cascade_level) {
 				glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, light.shadow_map.get(), 0, static_cast<GLint>(cascade_level));
-				glDrawBuffer(GL_NONE);
-				glReadBuffer(GL_NONE);
 
 				glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 				glClear(GL_DEPTH_BUFFER_BIT);
@@ -69,11 +73,14 @@ public:
 				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_view_matrix));
 				for (const auto& [model, instances] : m_model_instances) {
 					for (const auto& mesh : model->meshes()) {
-						glBindVertexArray(mesh.get());
-						for (const auto& instance : instances) {
-							const auto& model_matrix = instance.transform;
-							glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
-							glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
+						const auto& material = mesh.material();
+						if (!material.alpha_blending) {
+							glBindVertexArray(mesh.get());
+							for (const auto& instance : instances) {
+								const auto& model_matrix = instance.transform;
+								glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+								glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
+							}
 						}
 					}
 				}
@@ -87,8 +94,6 @@ public:
 
 			for (auto i = std::size_t{0}; i < light.shadow_projection_view_matrices.size(); ++i) {
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, static_cast<GLenum>(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i), light.shadow_map.get(), 0);
-				glDrawBuffer(GL_NONE);
-				glReadBuffer(GL_NONE);
 
 				glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 				glClear(GL_DEPTH_BUFFER_BIT);
@@ -97,11 +102,14 @@ public:
 				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_view_matrix));
 				for (const auto& [model, instances] : m_model_instances) {
 					for (const auto& mesh : model->meshes()) {
-						glBindVertexArray(mesh.get());
-						for (const auto& instance : instances) {
-							const auto& model_matrix = instance.transform;
-							glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
-							glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
+						const auto& material = mesh.material();
+						if (!material.alpha_blending) {
+							glBindVertexArray(mesh.get());
+							for (const auto& instance : instances) {
+								const auto& model_matrix = instance.transform;
+								glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+								glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
+							}
 						}
 					}
 				}
@@ -114,8 +122,6 @@ public:
 			glPolygonOffset(light.shadow_offset_factor, light.shadow_offset_units);
 
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, light.shadow_map.get(), 0);
-			glDrawBuffer(GL_NONE);
-			glReadBuffer(GL_NONE);
 
 			glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 			glClear(GL_DEPTH_BUFFER_BIT);
@@ -124,18 +130,19 @@ public:
 			glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_view_matrix));
 			for (const auto& [model, instances] : m_model_instances) {
 				for (const auto& mesh : model->meshes()) {
-					glBindVertexArray(mesh.get());
-					for (const auto& instance : instances) {
-						const auto& model_matrix = instance.transform;
-						glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
-						glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
+					const auto& material = mesh.material();
+					if (!material.alpha_blending) {
+						glBindVertexArray(mesh.get());
+						for (const auto& instance : instances) {
+							const auto& model_matrix = instance.transform;
+							glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+							glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
+						}
 					}
 				}
 			}
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, 0, 0);
 		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		glPolygonOffset(0.0f, 0.0f);
 		glDisable(GL_POLYGON_OFFSET_FILL);

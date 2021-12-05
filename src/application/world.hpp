@@ -148,6 +148,8 @@ public:
 							}
 						}
 						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.directional_lights[i]->color), 0.0f, 5.0f);
+						ImGui::SliderFloat("Shadow offset factor", &m_scene.directional_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
+						ImGui::SliderFloat("Shadow offset units", &m_scene.directional_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.directional_lights.erase(m_scene.directional_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -166,11 +168,15 @@ public:
 				ImGui::Separator();
 				for (auto i = std::size_t{0}; i < m_scene.point_lights.size(); ++i) {
 					if (ImGui::TreeNodeEx(fmt::format("Point Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.point_lights[i]->position), -50.0f, 50.0f);
+						if (ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.point_lights[i]->position), -50.0f, 50.0f)) {
+							m_scene.point_lights[i]->update_shadow_transform();
+						}
 						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.point_lights[i]->color), 0.0f, 5.0f);
 						ImGui::SliderFloat("Constant", &m_scene.point_lights[i]->constant, 0.0f, 1.0f);
 						ImGui::SliderFloat("Linear", &m_scene.point_lights[i]->linear, 0.0f, 1.0f);
 						ImGui::SliderFloat("Quadratic", &m_scene.point_lights[i]->quadratic, 0.0f, 1.0f);
+						ImGui::SliderFloat("Shadow offset factor", &m_scene.point_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
+						ImGui::SliderFloat("Shadow offset units", &m_scene.point_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.point_lights.erase(m_scene.point_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -189,26 +195,28 @@ public:
 				ImGui::Separator();
 				for (auto i = std::size_t{0}; i < m_scene.spot_lights.size(); ++i) {
 					if (ImGui::TreeNodeEx(fmt::format("Spot Light {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-						ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.spot_lights[i]->position), -50.0f, 50.0f);
+						if (ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.spot_lights[i]->position), -50.0f, 50.0f)) {
+							m_scene.spot_lights[i]->update_shadow_transform();
+						}
 						if (ImGui::SliderFloat3("Direction", glm::value_ptr(m_scene.spot_lights[i]->direction), -1.0f, 1.0f)) {
 							m_scene.spot_lights[i]->direction = normalize(m_scene.spot_lights[i]->direction);
 							if (any(isnan(m_scene.spot_lights[i]->direction))) {
 								m_scene.spot_lights[i]->direction = vec3{0.0f, -1.0f, 0.0f};
 							}
+							m_scene.spot_lights[i]->update_shadow_transform();
 						}
 						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.spot_lights[i]->color), 0.0f, 5.0f);
 						ImGui::SliderFloat("Constant", &m_scene.spot_lights[i]->constant, 0.0f, 1.0f);
 						ImGui::SliderFloat("Linear", &m_scene.spot_lights[i]->linear, 0.0f, 1.0f);
 						ImGui::SliderFloat("Quadratic", &m_scene.spot_lights[i]->quadratic, 0.0f, 1.0f);
-						ImGui::SliderFloat("Inner cutoff", &m_scene.spot_lights[i]->inner_cutoff, 0.0f, 1.0f);
-						ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i]->outer_cutoff, 0.0f, 1.0f);
-						if (ImGui::Button("Save shadow map")) {
-							const auto filename = fmt::format("spot_light_{}_shadow_map.hdr", i);
-							const auto& shadow_map = m_scene.spot_lights[i]->shadow_map;
-							const auto pixels = shadow_map.read_pixels_2d_hdr(GL_DEPTH_COMPONENT);
-							save_hdr(image_view{pixels.data(), shadow_map.width(), shadow_map.height(), 1}, filename.c_str(), {.flip_vertically = true});
-							fmt::print("Shadow map saved as \"{}\".\n", filename);
+						if (ImGui::SliderFloat("Inner cutoff", &m_scene.spot_lights[i]->inner_cutoff, 0.0f, 1.0f)) {
+							m_scene.spot_lights[i]->update_shadow_transform();
 						}
+						if (ImGui::SliderFloat("Outer cutoff", &m_scene.spot_lights[i]->outer_cutoff, 0.0f, 1.0f)) {
+							m_scene.spot_lights[i]->update_shadow_transform();
+						}
+						ImGui::SliderFloat("Shadow offset factor", &m_scene.spot_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
+						ImGui::SliderFloat("Shadow offset units", &m_scene.spot_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.spot_lights.erase(m_scene.spot_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
