@@ -117,8 +117,13 @@ void main() {
 
 			vec4 fragment_position_in_light_space = io_fragment_positions_in_directional_light_space[i * CSM_CASCADE_COUNT + cascade_level];
 			vec3 projected_coordinates = fragment_position_in_light_space.xyz;
-			// TODO: PCF/PCSS
+#if BAKING
 			visibility = texture(directional_shadow_maps[i], vec4(projected_coordinates.xy, cascade_level, projected_coordinates.z));
+#else
+			float light_size = directional_shadow_uv_sizes[i * CSM_CASCADE_COUNT + cascade_level];
+			float near_z = directional_shadow_near_planes[i * CSM_CASCADE_COUNT + cascade_level];
+			visibility = pcss(directional_shadow_maps[i], directional_depth_maps[i], projected_coordinates.xy, cascade_level, projected_coordinates.z, light_size, near_z);
+#endif
 		}
 
 		Lo += visibility * pbr(
@@ -146,8 +151,12 @@ void main() {
 
 		float visibility = 1.0;
 		if (point_lights[i].is_shadow_mapped) {
-			float receiver_depth = cube_depth(-frag_to_light, point_lights[i].shadow_near_z, point_lights[i].shadow_far_z);
-			visibility = pcf_filter_cube(point_shadow_maps[i], -frag_to_light, receiver_depth, point_lights[i].shadow_filter_radius);
+			float receiver_z = cube_depth(-frag_to_light, point_lights[i].shadow_near_z, point_lights[i].shadow_far_z);
+#if BAKING
+			visibility = texture(point_shadow_maps[i], vec4(-frag_to_light, receiver_z));
+#else
+			visibility = pcf_filter_cube(point_shadow_maps[i], -frag_to_light, receiver_z, point_lights[i].shadow_filter_radius);
+#endif
 		}
 
 		Lo += attenuation * visibility * pbr(
@@ -180,7 +189,11 @@ void main() {
 		if (spot_lights[i].is_shadow_mapped) {
 			vec4 fragment_position_in_light_space = io_fragment_positions_in_spot_light_space[i];
 			vec3 projected_coordinates = fragment_position_in_light_space.xyz / fragment_position_in_light_space.w;
+#if BAKING
+			visibility = texture(spot_shadow_maps[i], projected_coordinates);
+#else
 			visibility = pcf_filter(spot_shadow_maps[i], projected_coordinates.xy, projected_coordinates.z, spot_lights[i].shadow_filter_radius);
+#endif
 		}
 
 		Lo += intensity * attenuation * visibility * pbr(

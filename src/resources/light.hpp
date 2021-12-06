@@ -96,7 +96,7 @@ struct point_light_options final {
 	float shadow_offset_factor = 2.0f;
 	float shadow_offset_units = 128.0f;
 	float shadow_filter_radius = 0.04f;
-	std::size_t shadow_resolution = 1024;
+	std::size_t shadow_resolution = 512;
 	bool is_shadow_mapped = true;
 };
 
@@ -180,7 +180,7 @@ struct spot_light_options final {
 	float shadow_offset_factor = 2.0f;
 	float shadow_offset_units = 128.0f;
 	float shadow_filter_radius = 2.0f;
-	std::size_t shadow_resolution = 1024;
+	std::size_t shadow_resolution = 512;
 	bool is_shadow_mapped = true;
 };
 
