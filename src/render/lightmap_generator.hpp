@@ -261,8 +261,7 @@ public:
 	static auto bake_lightmap(scene& scene, vec3 sky_color, std::size_t resolution, std::size_t bounce_count, const progress_callback& callback) -> void {
 		static_assert(std::is_same_v<model_index, GLuint> && sizeof(model_index) == 4, "This function assumes 32-bit model indices.");
 
-		auto cam = camera{vec3{}, vec3{}, vec3{0.0f, 1.0f, 0.0f}, camera_options{}};
-		// TODO: Make a view matrix that covers the entire scene for the shadow renderer.
+		auto cam = camera{vec3{0.0f, 100.0f, 0.0f}, vec3{0.0f, -1.0f, 0.0f}, vec3{0.0f, 0.0f, 1.0f}, camera_options{}};
 
 		{
 			auto shadow_baker = shadow_renderer{};
