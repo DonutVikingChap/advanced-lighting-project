@@ -14,15 +14,11 @@ class skybox_renderer final {
 public:
 	static constexpr auto gamma = 2.2f;
 
-	auto resize(const mat4& projection_matrix) -> void {
-		m_skybox_shader.resize(projection_matrix);
-	}
-
 	auto draw_skybox(std::shared_ptr<cubemap_texture> texture) -> void {
 		m_skybox_texture = std::move(texture);
 	}
 
-	auto render(const mat3& view_matrix) -> void {
+	auto render(const mat4& projection_matrix, const mat3& view_matrix) -> void {
 		if (m_skybox_texture) {
 			glDepthFunc(GL_LEQUAL);
 
@@ -32,6 +28,7 @@ public:
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, m_skybox_texture->get());
 
+			glUniformMatrix4fv(m_skybox_shader.projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 			glUniformMatrix3fv(m_skybox_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
 
 			glDrawArrays(cubemap_mesh::primitive_type, 0, static_cast<GLsizei>(cubemap_mesh::vertices.size()));
@@ -41,9 +38,8 @@ public:
 		}
 	}
 
-	auto reload_shaders(const mat4& projection_matrix) -> void {
+	auto reload_shaders() -> void {
 		m_skybox_shader = skybox_shader{};
-		m_skybox_shader.resize(projection_matrix);
 	}
 
 private:
@@ -51,11 +47,6 @@ private:
 		skybox_shader() {
 			glUseProgram(program.get());
 			glUniform1i(skybox_texture.location(), 0);
-		}
-
-		auto resize(const mat4& projection_matrix) -> void { // NOLINT(readability-make-member-function-const)
-			glUseProgram(program.get());
-			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 		}
 
 		shader_program program{{

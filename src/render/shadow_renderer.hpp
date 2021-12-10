@@ -3,18 +3,21 @@
 
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
+#include "../resources/camera.hpp"
 #include "../resources/framebuffer.hpp"
 #include "../resources/light.hpp"
 #include "../resources/model.hpp"
 #include "../resources/shader.hpp"
 
-#include <cstddef>              // std::size_t
-#include <glm/gtc/type_ptr.hpp> // glm::value_ptr
-#include <memory>               // std::shared_ptr
-#include <span>                 // std::span
-#include <unordered_map>        // std::unordered_map
-#include <utility>              // std::move
-#include <vector>               // std::vector
+#include <cstddef>                      // std::size_t
+#include <glm/gtc/matrix_transform.hpp> // glm::ortho
+#include <glm/gtc/type_ptr.hpp>         // glm::value_ptr
+#include <limits>                       // std::numeric_limits
+#include <memory>                       // std::shared_ptr
+#include <span>                         // std::span
+#include <unordered_map>                // std::unordered_map
+#include <utility>                      // std::move
+#include <vector>                       // std::vector
 
 class shadow_renderer final {
 public:
@@ -43,42 +46,110 @@ public:
 	}
 
 	auto draw_model(std::shared_ptr<model> model, const mat4& transform) -> void {
+		const auto position = vec3{transform[3]};
+		const auto extents = vec3{model->bounding_sphere_radius()};
+		m_world_aabb_min = min(m_world_aabb_min, position - extents);
+		m_world_aabb_max = max(m_world_aabb_max, position + extents);
 		m_model_instances[std::move(model)].emplace_back(transform);
 	}
 
-	auto render(const mat4& view_matrix) -> void {
+	auto render(const camera& camera) -> void {
 		glEnable(GL_POLYGON_OFFSET_FILL);
 
 		glUseProgram(m_shadow_shader.program.get());
 
 		glBindFramebuffer(GL_FRAMEBUFFER, m_fbo.get());
 
+		const auto inverse_view_matrix = inverse(camera.view_matrix);
+		const auto world_aabb_corners = std::array<vec3, 8>{
+			vec3{m_world_aabb_min.x, m_world_aabb_min.y, m_world_aabb_min.z},
+			vec3{m_world_aabb_min.x, m_world_aabb_min.y, m_world_aabb_max.z},
+			vec3{m_world_aabb_min.x, m_world_aabb_max.y, m_world_aabb_min.z},
+			vec3{m_world_aabb_min.x, m_world_aabb_max.y, m_world_aabb_max.z},
+			vec3{m_world_aabb_max.x, m_world_aabb_min.y, m_world_aabb_min.z},
+			vec3{m_world_aabb_max.x, m_world_aabb_min.y, m_world_aabb_max.z},
+			vec3{m_world_aabb_max.x, m_world_aabb_max.y, m_world_aabb_min.z},
+			vec3{m_world_aabb_max.x, m_world_aabb_max.y, m_world_aabb_max.z},
+		};
+
 		for (auto& light_ptr : m_directional_lights) {
 			auto& light = *light_ptr;
 			glPolygonOffset(light.shadow_offset_factor, light.shadow_offset_units);
 
-			auto projection_view_matrices = std::array<mat4, directional_light::csm_cascade_count>{};
-			// TODO: Calculate projection view matrices.
+			const auto shadow_map_texel_size = 1.0f / vec2{static_cast<float>(light.shadow_map.width()), static_cast<float>(light.shadow_map.height())};
 
-			// TODO: CSM
-			(void)view_matrix;
-
-			for (auto cascade_level = std::size_t{0}; cascade_level < directional_light::csm_cascade_count; ++cascade_level) {
+			for (auto cascade_level = std::size_t{0}; cascade_level < camera_cascade_count; ++cascade_level) {
 				glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, light.shadow_map.get(), 0, static_cast<GLint>(cascade_level));
 
 				glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 				glClear(GL_DEPTH_BUFFER_BIT);
 
-				const auto& projection_view_matrix = projection_view_matrices[cascade_level];
-				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_view_matrix));
+				auto shadow_volume_min = vec3{std::numeric_limits<float>::max()};
+				auto shadow_volume_max = vec3{-std::numeric_limits<float>::max()};
+
+				// Fit shadow near/far plane to world AABB.
+				for (const auto& world_aabb_corner : world_aabb_corners) {
+					const auto z = (light.shadow_view_matrix * vec4{world_aabb_corner, 1.0f}).z;
+					shadow_volume_min.z = min(shadow_volume_min.z, z);
+					shadow_volume_max.z = max(shadow_volume_max.z, z);
+				}
+
+				// Get view frustum in world space.
+				const auto view_frustum_corners = std::array<vec3, 8>{
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][0], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][1], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][2], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][3], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][4], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][5], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][6], 1.0f}},
+					vec3{inverse_view_matrix * vec4{camera.cascade_frustum_corners[cascade_level][7], 1.0f}},
+				};
+				const auto view_frustum_diagonal_length = length(view_frustum_corners[4] - view_frustum_corners[2]);
+
+				// Fit shadow area to view frustum.
+				for (const auto& view_frustum_corner : view_frustum_corners) {
+					const auto xy = vec2{light.shadow_view_matrix * vec4{view_frustum_corner, 1.0f}};
+					shadow_volume_min.x = min(shadow_volume_min.x, xy.x);
+					shadow_volume_min.y = min(shadow_volume_min.y, xy.y);
+					shadow_volume_max.x = max(shadow_volume_max.x, xy.x);
+					shadow_volume_max.y = max(shadow_volume_max.y, xy.y);
+				}
+
+				// Pad shadow area.
+				const auto padding = (vec2{view_frustum_diagonal_length} - (vec2{shadow_volume_max} - vec2{shadow_volume_min})) * 0.5f;
+				shadow_volume_min.x -= padding.x;
+				shadow_volume_min.y -= padding.y;
+				shadow_volume_max.x += padding.x;
+				shadow_volume_max.y += padding.y;
+
+				// Snap the camera to 1 pixel increments so that moving the camera does not cause shadows to jitter.
+				const auto world_units_per_texel = shadow_map_texel_size * view_frustum_diagonal_length;
+				shadow_volume_min.x -= floor(shadow_volume_min.x / world_units_per_texel.x) * world_units_per_texel.x;
+				shadow_volume_min.y -= floor(shadow_volume_min.y / world_units_per_texel.y) * world_units_per_texel.y;
+				shadow_volume_max.x += floor(shadow_volume_max.x / world_units_per_texel.x) * world_units_per_texel.x;
+				shadow_volume_max.y += floor(shadow_volume_max.y / world_units_per_texel.y) * world_units_per_texel.y;
+
+				// Calculate projection matrix.
+				const auto shadow_projection_matrix = glm::ortho(
+					shadow_volume_min.x, shadow_volume_max.x, shadow_volume_min.y, shadow_volume_max.y, shadow_volume_min.z, shadow_volume_max.z);
+
+				// Calculate projection-view matrix.
+				const auto shadow_projection_view_matrix = shadow_projection_matrix * light.shadow_view_matrix;
+
+				// Set shadow variables for model rendering.
+				light.shadow_matrices[cascade_level] = light_depth_conversion_matrix * shadow_projection_view_matrix;
+				light.shadow_uv_sizes[cascade_level] = light.shadow_light_size / length(vec2{shadow_volume_max} - vec2{shadow_volume_min});
+				light.shadow_near_planes[cascade_level] = shadow_volume_min.z;
+
+				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(shadow_projection_view_matrix));
 				for (const auto& [model, instances] : m_model_instances) {
 					for (const auto& mesh : model->meshes()) {
 						const auto& material = mesh.material();
 						if (!material.alpha_blending) {
 							glBindVertexArray(mesh.get());
 							for (const auto& instance : instances) {
-								const auto& model_matrix = instance.transform;
-								glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+								glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(instance.transform));
 								glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
 							}
 						}
@@ -98,16 +169,15 @@ public:
 				glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 				glClear(GL_DEPTH_BUFFER_BIT);
 
-				const auto& projection_view_matrix = light.shadow_projection_view_matrices[i];
-				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_view_matrix));
+				const auto& shadow_projection_view_matrix = light.shadow_projection_view_matrices[i];
+				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(shadow_projection_view_matrix));
 				for (const auto& [model, instances] : m_model_instances) {
 					for (const auto& mesh : model->meshes()) {
 						const auto& material = mesh.material();
 						if (!material.alpha_blending) {
 							glBindVertexArray(mesh.get());
 							for (const auto& instance : instances) {
-								const auto& model_matrix = instance.transform;
-								glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+								glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(instance.transform));
 								glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
 							}
 						}
@@ -126,16 +196,15 @@ public:
 			glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 			glClear(GL_DEPTH_BUFFER_BIT);
 
-			const auto& projection_view_matrix = light.shadow_projection_view_matrix;
-			glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_view_matrix));
+			const auto& shadow_projection_view_matrix = light.shadow_projection_view_matrix;
+			glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(shadow_projection_view_matrix));
 			for (const auto& [model, instances] : m_model_instances) {
 				for (const auto& mesh : model->meshes()) {
 					const auto& material = mesh.material();
 					if (!material.alpha_blending) {
 						glBindVertexArray(mesh.get());
 						for (const auto& instance : instances) {
-							const auto& model_matrix = instance.transform;
-							glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(model_matrix));
+							glUniformMatrix4fv(m_shadow_shader.model_matrix.location(), 1, GL_FALSE, glm::value_ptr(instance.transform));
 							glDrawElements(model_mesh::primitive_type, static_cast<GLsizei>(mesh.indices().size()), model_mesh::index_type, nullptr);
 						}
 					}
@@ -151,6 +220,8 @@ public:
 		m_directional_lights.clear();
 		m_point_lights.clear();
 		m_spot_lights.clear();
+		m_world_aabb_min = vec3{std::numeric_limits<float>::max()};
+		m_world_aabb_max = vec3{-std::numeric_limits<float>::max()};
 	}
 
 	auto reload_shaders() -> void {
@@ -182,6 +253,8 @@ private:
 	std::vector<std::shared_ptr<directional_light>> m_directional_lights{};
 	std::vector<std::shared_ptr<point_light>> m_point_lights{};
 	std::vector<std::shared_ptr<spot_light>> m_spot_lights{};
+	vec3 m_world_aabb_min{std::numeric_limits<float>::max()};
+	vec3 m_world_aabb_max{-std::numeric_limits<float>::max()};
 };
 
 #endif

@@ -3,6 +3,7 @@
 
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
+#include "camera.hpp"
 #include "shader.hpp"
 #include "texture.hpp"
 
@@ -25,14 +26,14 @@ static constexpr auto light_depth_conversion_matrix = mat4{
 struct directional_light_options final {
 	vec3 direction{0.0f, -1.0f, 0.0f};
 	vec3 color{1.0f, 1.0f, 1.0f};
-	float shadow_offset_factor = 2.0f;
+	float shadow_offset_factor = 1.1f;
 	float shadow_offset_units = 128.0f;
+	float shadow_light_size = 0.414f;
 	std::size_t shadow_resolution = 2048;
 	bool is_shadow_mapped = true;
 };
 
 struct directional_light final {
-	static constexpr auto csm_cascade_count = std::size_t{4};
 	static constexpr auto shadow_map_max_depth = std::numeric_limits<float>::max();
 	static constexpr auto shadow_map_internal_format = GLint{GL_DEPTH_COMPONENT};
 	static constexpr auto shadow_map_format = GLenum{GL_DEPTH_COMPONENT};
@@ -52,9 +53,9 @@ struct directional_light final {
 
 	[[nodiscard]] static auto default_shadow_map() -> GLuint {
 		static const auto shadow_map = [] {
-			auto depth = std::array<float, 1 * 1 * csm_cascade_count>{};
+			auto depth = std::array<float, 1 * 1 * camera_cascade_count>{};
 			depth.fill(shadow_map_max_depth);
-			return texture::create_2d_array(shadow_map_internal_format, 1, 1, csm_cascade_count, shadow_map_format, GL_FLOAT, depth.data(), shadow_map_options);
+			return texture::create_2d_array(shadow_map_internal_format, 1, 1, camera_cascade_count, shadow_map_format, GL_FLOAT, depth.data(), shadow_map_options);
 		}();
 		return shadow_map.get();
 	}
@@ -68,20 +69,28 @@ struct directional_light final {
 		: direction(options.direction)
 		, color(options.color)
 		, shadow_offset_factor(options.shadow_offset_factor)
-		, shadow_offset_units(options.shadow_offset_units) {
+		, shadow_offset_units(options.shadow_offset_units)
+		, shadow_light_size(options.shadow_light_size) {
 		if (options.is_shadow_mapped) {
 			shadow_map = texture::create_2d_array_uninitialized(
-				shadow_map_internal_format, options.shadow_resolution, options.shadow_resolution, csm_cascade_count, shadow_map_options);
+				shadow_map_internal_format, options.shadow_resolution, options.shadow_resolution, camera_cascade_count, shadow_map_options);
+			update_shadow_transform();
 		}
+	}
+
+	auto update_shadow_transform() -> void {
+		shadow_view_matrix = glm::lookAt(vec3{}, direction, vec3{0.0f, 1.0f, 0.0f});
 	}
 
 	vec3 direction;
 	vec3 color;
 	float shadow_offset_factor;
 	float shadow_offset_units;
-	std::array<mat4, csm_cascade_count> shadow_matrices{};
-	std::array<float, csm_cascade_count> shadow_uv_sizes{};
-	std::array<float, csm_cascade_count> shadow_near_planes{};
+	float shadow_light_size;
+	mat4 shadow_view_matrix{1.0f};
+	std::array<mat4, camera_cascade_count> shadow_matrices{};
+	std::array<float, camera_cascade_count> shadow_uv_sizes{};
+	std::array<float, camera_cascade_count> shadow_near_planes{};
 	texture shadow_map = texture::null();
 };
 
@@ -93,7 +102,7 @@ struct point_light_options final {
 	float quadratic = 0.0075f;
 	float shadow_near_z = 0.01f;
 	float shadow_far_z = 100.0f;
-	float shadow_offset_factor = 2.0f;
+	float shadow_offset_factor = 1.1f;
 	float shadow_offset_units = 128.0f;
 	float shadow_filter_radius = 0.04f;
 	std::size_t shadow_resolution = 512;
@@ -177,7 +186,7 @@ struct spot_light_options final {
 	float outer_cutoff = cos(radians(50.0f));
 	float shadow_near_z = 0.01f;
 	float shadow_far_z = 100.0f;
-	float shadow_offset_factor = 2.0f;
+	float shadow_offset_factor = 1.1f;
 	float shadow_offset_units = 128.0f;
 	float shadow_filter_radius = 2.0f;
 	std::size_t shadow_resolution = 512;

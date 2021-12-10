@@ -3,6 +3,7 @@
 
 #include "../core/glsl.hpp"
 #include "../core/opengl.hpp"
+#include "../resources/camera.hpp"
 #include "../resources/cubemap.hpp"
 #include "../resources/light.hpp"
 #include "../resources/lightmap.hpp"
@@ -43,19 +44,10 @@ public:
 	explicit model_renderer(bool baking)
 		: m_baking(baking) {}
 
-	auto resize(const mat4& projection_matrix) -> void {
-		m_model_shader.upload_projection_matrix(projection_matrix);
-		m_model_shader_with_alpha_test.upload_projection_matrix(projection_matrix);
-		m_model_shader_with_alpha_blending.upload_projection_matrix(projection_matrix);
-	}
-
-	auto reload_shaders(const mat4& projection_matrix) -> void {
+	auto reload_shaders() -> void {
 		m_model_shader = model_shader{m_baking, false, false};
-		m_model_shader.upload_projection_matrix(projection_matrix);
 		m_model_shader_with_alpha_test = model_shader{m_baking, true, false};
-		m_model_shader_with_alpha_test.upload_projection_matrix(projection_matrix);
 		m_model_shader_with_alpha_blending = model_shader{m_baking, false, true};
-		m_model_shader_with_alpha_blending.upload_projection_matrix(projection_matrix);
 	}
 
 	auto draw_lightmap(std::shared_ptr<lightmap_texture> lightmap) -> void {
@@ -82,14 +74,14 @@ public:
 		m_model_instances[std::move(model)].emplace_back(transform, lightmap_offset, lightmap_scale);
 	}
 
-	auto render(const mat4& view_matrix, vec3 view_position) -> void {
+	auto render(const camera& camera) -> void {
 		if (m_baking) {
 			glDisable(GL_CULL_FACE);
 		}
 
 		// Render meshes without alpha.
 		glUseProgram(m_model_shader.program.get());
-		upload_uniform_frame_data(m_model_shader, view_matrix, view_position);
+		upload_uniform_frame_data(m_model_shader, camera);
 		for (const auto& [model, instances] : m_model_instances) {
 			const auto model_texture_units_begin = reserved_texture_units_end;
 			auto texture_index = 0;
@@ -121,7 +113,7 @@ public:
 
 		// Render meshes with alpha.
 		glUseProgram(m_model_shader_with_alpha_test.program.get());
-		upload_uniform_frame_data(m_model_shader_with_alpha_test, view_matrix, view_position);
+		upload_uniform_frame_data(m_model_shader_with_alpha_test, camera);
 		if (!m_baking) {
 			glDisable(GL_CULL_FACE);
 		}
@@ -138,7 +130,7 @@ public:
 				const auto& material = mesh.material();
 				if (material.alpha_blending) {
 					for (const auto& instance : instances) {
-						const auto depth = glm::distance2(view_position, vec3{instance.transform[3]});
+						const auto depth = glm::distance2(camera.position, vec3{instance.transform[3]});
 						m_alpha_blended_mesh_instances.emplace_back(model, mesh, instance.transform, instance.lightmap_offset, instance.lightmap_scale, depth);
 					}
 				} else if (material.alpha_test) {
@@ -166,7 +158,7 @@ public:
 		// Render alpha blended mesh instances back-to-front.
 		std::ranges::sort(m_alpha_blended_mesh_instances, [](const auto& lhs, const auto& rhs) { return lhs.depth > rhs.depth; });
 		glUseProgram(m_model_shader_with_alpha_blending.program.get());
-		upload_uniform_frame_data(m_model_shader_with_alpha_blending, view_matrix, view_position);
+		upload_uniform_frame_data(m_model_shader_with_alpha_blending, camera);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		for (const auto& [model, mesh, transform, lightmap_offset, lightmap_scale, depth] : m_alpha_blended_mesh_instances) {
@@ -223,7 +215,7 @@ private:
 						  {"DIRECTIONAL_LIGHT_COUNT", directional_light_count},
 						  {"POINT_LIGHT_COUNT", point_light_count},
 						  {"SPOT_LIGHT_COUNT", spot_light_count},
-						  {"CSM_CASCADE_COUNT", directional_light::csm_cascade_count},
+						  {"CSM_CASCADE_COUNT", camera_cascade_count},
 					  },
 			  }) {
 			glUseProgram(program.get());
@@ -236,11 +228,6 @@ private:
 			for (auto i = std::size_t{0}; i < spot_light_count; ++i) {
 				glUniform1i(spot_lights[i].is_active.location(), GL_FALSE);
 			}
-		}
-
-		auto upload_projection_matrix(const mat4& projection_matrix) const -> void {
-			glUseProgram(program.get());
-			glUniformMatrix4fv(this->projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 		}
 
 		shader_program program;
@@ -265,14 +252,13 @@ private:
 		shader_array<spot_light_uniform, spot_light_count> spot_lights{program.get(), "spot_lights"};
 		shader_array<shader_uniform, directional_light_count> directional_shadow_maps{program.get(), "directional_shadow_maps"};
 		shader_array<shader_uniform, directional_light_count> directional_depth_maps{program.get(), "directional_depth_maps"};
-		shader_array<shader_uniform, directional_light_count * directional_light::csm_cascade_count> directional_shadow_matrices{program.get(), "directional_shadow_matrices"};
-		shader_array<shader_uniform, directional_light_count * directional_light::csm_cascade_count> directional_shadow_uv_sizes{program.get(), "directional_shadow_uv_sizes"};
-		shader_array<shader_uniform, directional_light_count * directional_light::csm_cascade_count> directional_shadow_near_planes{program.get(),
-			"directional_shadow_near_planes"};
+		shader_array<shader_uniform, directional_light_count * camera_cascade_count> directional_shadow_matrices{program.get(), "directional_shadow_matrices"};
+		shader_array<shader_uniform, directional_light_count * camera_cascade_count> directional_shadow_uv_sizes{program.get(), "directional_shadow_uv_sizes"};
+		shader_array<shader_uniform, directional_light_count * camera_cascade_count> directional_shadow_near_planes{program.get(), "directional_shadow_near_planes"};
 		shader_array<shader_uniform, point_light_count> point_shadow_maps{program.get(), "point_shadow_maps"};
 		shader_array<shader_uniform, spot_light_count> spot_shadow_maps{program.get(), "spot_shadow_maps"};
 		shader_array<shader_uniform, spot_light_count> spot_shadow_matrices{program.get(), "spot_shadow_matrices"};
-		shader_array<shader_uniform, directional_light::csm_cascade_count> cascade_levels_frustrum_depths{program.get(), "cascade_levels_frustrum_depths"};
+		shader_array<shader_uniform, camera_cascade_count> cascade_levels_frustrum_depths{program.get(), "cascade_levels_frustrum_depths"};
 	};
 
 	struct model_instance final {
@@ -307,10 +293,11 @@ private:
 
 	using alpha_blended_mesh_instance_list = std::vector<alpha_blended_mesh_instance>;
 
-	auto upload_uniform_frame_data(model_shader& shader, const mat4& view_matrix, vec3 view_position) const -> void {
-		// Upload view matrix and position.
-		glUniformMatrix4fv(m_model_shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(view_matrix));
-		glUniform3fv(m_model_shader.view_position.location(), 1, glm::value_ptr(view_position));
+	auto upload_uniform_frame_data(model_shader& shader, const camera& camera) const -> void {
+		// Upload camera.
+		glUniformMatrix4fv(shader.projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(camera.projection_matrix));
+		glUniformMatrix4fv(shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(camera.view_matrix));
+		glUniform3fv(shader.view_position.location(), 1, glm::value_ptr(camera.position));
 
 		// Upload lightmap.
 		glActiveTexture(GL_TEXTURE0 + lightmap_texture_unit);
@@ -357,8 +344,8 @@ private:
 					glBindTexture(GL_TEXTURE_2D_ARRAY, light.shadow_map.get());
 					glBindSampler(depth_map_texture_unit, directional_light::depth_sampler());
 
-					const auto cascade_offset = i * directional_light::csm_cascade_count;
-					for (auto cascade_level = std::size_t{0}; cascade_level < directional_light::csm_cascade_count; ++cascade_level) {
+					const auto cascade_offset = i * camera_cascade_count;
+					for (auto cascade_level = std::size_t{0}; cascade_level < camera_cascade_count; ++cascade_level) {
 						glUniformMatrix4fv(
 							shader.directional_shadow_matrices[cascade_offset + cascade_level].location(), 1, GL_FALSE, glm::value_ptr(light.shadow_matrices[cascade_level]));
 						glUniform1f(shader.directional_shadow_uv_sizes[cascade_offset + cascade_level].location(), light.shadow_uv_sizes[cascade_level]);

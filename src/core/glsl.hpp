@@ -43,6 +43,7 @@ using glm::normalize;
 using glm::radians;
 using glm::round;
 using glm::sin;
+using glm::sqrt;
 using glm::tan;
 
 #endif

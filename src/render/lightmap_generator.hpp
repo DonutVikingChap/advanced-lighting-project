@@ -6,6 +6,7 @@
 #include "../render/model_renderer.hpp"
 #include "../render/shadow_renderer.hpp"
 #include "../render/skybox_renderer.hpp"
+#include "../resources/camera.hpp"
 #include "../resources/lightmap.hpp"
 #include "../resources/scene.hpp"
 #include "../resources/texture.hpp"
@@ -260,6 +261,9 @@ public:
 	static auto bake_lightmap(scene& scene, vec3 sky_color, std::size_t resolution, std::size_t bounce_count, const progress_callback& callback) -> void {
 		static_assert(std::is_same_v<model_index, GLuint> && sizeof(model_index) == 4, "This function assumes 32-bit model indices.");
 
+		auto cam = camera{vec3{}, vec3{}, vec3{0.0f, 1.0f, 0.0f}, camera_options{}};
+		// TODO: Make a view matrix that covers the entire scene for the shadow renderer.
+
 		{
 			auto shadow_baker = shadow_renderer{};
 			for (const auto& light : scene.directional_lights) {
@@ -274,7 +278,7 @@ public:
 			for (const auto& object : scene.objects) {
 				shadow_baker.draw_model(object.model_ptr, object.transform);
 			}
-			shadow_baker.render(mat4{1.0f}); // TODO: Make a view matrix that covers the entire scene.
+			shadow_baker.render(cam);
 		}
 
 		auto model_baker = model_renderer{true};
@@ -318,13 +322,8 @@ public:
 						LM_UNSIGNED_INT, // NOTE: 32-bit model index assumed here.
 						mesh.indices().data());
 					auto viewport = std::array<int, 4>{};
-					auto view_matrix = mat4{};
-					auto projection_matrix = mat4{};
-					while (lmBegin(lightmapper.get(), viewport.data(), glm::value_ptr(view_matrix), glm::value_ptr(projection_matrix))) {
+					while (lmBegin(lightmapper.get(), viewport.data(), glm::value_ptr(cam.view_matrix), glm::value_ptr(cam.projection_matrix))) {
 						try {
-							glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-							model_baker.resize(projection_matrix);
-							skybox_baker.resize(projection_matrix);
 							skybox_baker.draw_skybox(scene.sky->original());
 							model_baker.draw_lightmap(scene.lightmap);
 							model_baker.draw_environment(scene.sky);
@@ -340,8 +339,12 @@ public:
 							for (const auto& object : scene.objects) {
 								model_baker.draw_model(object.model_ptr, object.transform, object.lightmap_offset, object.lightmap_scale);
 							}
-							model_baker.render(view_matrix, vec3{inverse(view_matrix)[3]});
-							skybox_baker.render(mat3{view_matrix});
+
+							cam.update_cascade_frustums();
+
+							glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+							model_baker.render(cam);
+							skybox_baker.render(cam.projection_matrix, mat3{cam.view_matrix});
 							if (!callback("Baking lightmaps",
 									bounce_index,
 									bounce_count,

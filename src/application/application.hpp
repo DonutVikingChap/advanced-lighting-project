@@ -35,10 +35,6 @@ public:
 		.msaa_level = 4,
 	};
 
-	static constexpr auto vertical_fov = 1.57079633f;
-	static constexpr auto near_z = 0.01f;
-	static constexpr auto far_z = 1000.0f;
-
 	explicit application(std::span<char*> arguments)
 		: render_loop(arguments, options) {
 		m_renderer.gui().enable();
@@ -46,8 +42,10 @@ public:
 
 private:
 	auto resize(int width, int height) -> void override {
-		m_renderer.resize(width, height, vertical_fov, near_z, far_z);
 		m_viewport = viewport{0, 0, width, height};
+		m_camera.aspect_ratio = static_cast<float>(width) / static_cast<float>(height);
+		m_camera.update_projection();
+		m_renderer.resize(width, height);
 	}
 
 	auto handle_event(const SDL_Event& e) -> void override {
@@ -91,7 +89,7 @@ private:
 					auto height = 0;
 					SDL_GetWindowSize(get_window(), &width, &height);
 					m_asset_manager.reload_shaders();
-					m_renderer.reload_shaders(width, height, vertical_fov, near_z, far_z);
+					m_renderer.reload_shaders(width, height);
 					fmt::print("Shaders reloaded!\n");
 				} catch (const std::exception& e) {
 					fmt::print(stderr, "Failed to reload shaders: {}\n", e.what());
@@ -103,7 +101,12 @@ private:
 		}
 		m_world.draw(m_renderer);
 		draw_fps_counter();
-		m_renderer.render(framebuffer::get_default(), m_viewport, m_world.view_matrix(), m_world.view_position());
+
+		m_camera.position = m_world.controller().position();
+		m_camera.direction = m_world.controller().forward();
+		m_camera.up = m_world.controller().up();
+		m_camera.update_view();
+		m_renderer.render(framebuffer::get_default(), m_viewport, m_camera);
 	}
 
 	auto enable_gui() -> void {
@@ -151,6 +154,7 @@ private:
 	std::shared_ptr<font> m_emoji_font = m_asset_manager.load_font("assets/fonts/noto-emoji/NotoEmoji-Regular.ttf", 32u);
 	world m_world{"assets/worlds/world1", m_asset_manager};
 	viewport m_viewport{};
+	camera m_camera{m_world.controller().position(), m_world.controller().forward(), m_world.controller().up(), camera_options{}};
 	float m_max_fps = options.max_fps;
 };
 

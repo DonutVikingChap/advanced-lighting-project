@@ -134,6 +134,10 @@ public:
 		return m_textures;
 	}
 
+	[[nodiscard]] auto bounding_sphere_radius() const noexcept -> float {
+		return m_bounding_sphere_radius;
+	}
+
 private:
 	model() noexcept = default;
 
@@ -181,6 +185,8 @@ private:
 	}
 
 	auto add_mesh(const aiMesh& mesh, const aiScene& scene, std::string_view textures_filename_prefix, model_texture_cache& texture_cache) -> void {
+		auto bounding_sphere_radius_squared = 0.0f;
+
 		const auto zero_vector = aiVector3D{};
 		auto vertices = std::vector<model_vertex>{};
 		for (auto i = 0u; i < mesh.mNumVertices; ++i) {
@@ -197,6 +203,13 @@ private:
 				.texture_coordinates = vec2{texture_coordinates.x, texture_coordinates.y},
 				.lightmap_coordinates = vec2{texture_coordinates.x, texture_coordinates.y},
 			});
+
+			const auto radius_squared = position.x * position.x + position.y * position.y + position.z * position.z;
+			bounding_sphere_radius_squared = max(bounding_sphere_radius_squared, radius_squared);
+		}
+
+		if (bounding_sphere_radius_squared > 0.0f) {
+			m_bounding_sphere_radius = max(m_bounding_sphere_radius, sqrt(bounding_sphere_radius_squared));
 		}
 
 		auto indices = std::vector<model_index>{};
@@ -237,6 +250,7 @@ private:
 
 	std::vector<model_mesh> m_meshes{};
 	std::vector<std::shared_ptr<texture>> m_textures{};
+	float m_bounding_sphere_radius = 0.0f;
 };
 
 #endif

@@ -4,6 +4,7 @@
 #include "../core/glsl.hpp"
 #include "../render/lightmap_generator.hpp"
 #include "../render/rendering_pipeline.hpp"
+#include "../resources/camera.hpp"
 #include "../resources/image.hpp"
 #include "../resources/lightmap.hpp"
 #include "../resources/scene.hpp"
@@ -16,7 +17,7 @@
 #include <cstddef>                      // std::size_t, std::ptrdiff_t
 #include <cstdio>                       // stderr
 #include <fmt/format.h>                 // fmt::format, fmt::print
-#include <glm/gtc/matrix_transform.hpp> // glm::lookAt, glm::translate, glm::scale
+#include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::scale
 #include <glm/gtc/type_ptr.hpp>         // glm::value_ptr
 #include <imgui.h>                      // ImGui
 #include <memory>                       // std::shared_ptr, std::make_shared
@@ -146,6 +147,7 @@ public:
 							if (any(isnan(m_scene.directional_lights[i]->direction))) {
 								m_scene.directional_lights[i]->direction = vec3{0.0f, -1.0f, 0.0f};
 							}
+							m_scene.directional_lights[i]->update_shadow_transform();
 						}
 						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.directional_lights[i]->color), 0.0f, 5.0f);
 						ImGui::SliderFloat("Shadow offset factor", &m_scene.directional_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
@@ -290,14 +292,6 @@ public:
 
 	[[nodiscard]] auto controller() const noexcept -> const flight_controller& {
 		return m_controller;
-	}
-
-	[[nodiscard]] auto view_position() const noexcept -> vec3 {
-		return m_controller.position();
-	}
-
-	[[nodiscard]] auto view_matrix() const noexcept -> mat4 {
-		return glm::lookAt(m_controller.position(), m_controller.position() + m_controller.forward(), m_controller.up());
 	}
 
 private:
