@@ -3,6 +3,7 @@
 
 #include "../core/handle.hpp"
 #include "../core/opengl.hpp"
+#include "../utilities/preprocessor.hpp"
 
 #include <array>            // std::array
 #include <cstddef>          // std::size_t
@@ -61,19 +62,26 @@ public:
 		}
 		auto stream = std::ostringstream{};
 		stream << file.rdbuf();
-		auto file_cache = std::unordered_map<std::string, std::string>{};
-		const auto& source = file_cache.emplace(std::string{filename}, std::move(stream).str()).first->second;
+		const auto source = std::move(stream).str();
 		file.close();
 
-		auto processed = processed_sources{};
-		auto header = fmt::format("#version {}\n", glsl_version);
+		auto processed_strings = std::vector<std::string>{};
+		auto environment = preprocessor_environment{};
+		auto file_cache = preprocessor::file_content_map{};
+		preprocessor::process_file(filename, fmt::format("#version {}\n", glsl_version), processed_strings, environment, file_cache);
 		for (const auto& definition : definitions.values) {
-			header.append(definition.string);
+			preprocessor::process_file(filename, definition.string, processed_strings, environment, file_cache);
 		}
-		processed.add(header);
-		preprocess(processed, file_cache, filename, source);
+		preprocessor::process_file(filename, source, processed_strings, environment, file_cache);
 
-		glShaderSource(m_shader.get(), static_cast<GLsizei>(processed.strings.size()), processed.strings.data(), processed.lengths.data());
+		auto strings = std::vector<const GLchar*>{};
+		auto lengths = std::vector<GLint>{};
+		for (const auto& processed_string : processed_strings) {
+			strings.push_back(processed_string.data());
+			lengths.push_back(static_cast<GLint>(processed_string.size()));
+		}
+
+		glShaderSource(m_shader.get(), static_cast<GLsizei>(strings.size()), strings.data(), lengths.data());
 		glCompileShader(m_shader.get());
 
 		auto success = GLint{GL_FALSE};
@@ -95,68 +103,6 @@ public:
 	}
 
 private:
-	static constexpr auto include_directive = std::string_view{"#include"};
-
-	struct processed_sources final {
-		std::vector<const GLchar*> strings;
-		std::vector<GLint> lengths;
-
-		auto add(std::string_view str) -> void {
-			strings.push_back(str.data());
-			lengths.push_back(static_cast<GLint>(str.size()));
-		}
-	};
-
-	auto preprocess(processed_sources& processed, std::unordered_map<std::string, std::string>& file_cache, std::string_view filename, std::string_view source) -> void {
-		auto i = std::size_t{0};
-		do {
-			const auto begin = i;
-			i = source.find(include_directive, i);
-			const auto end = i;
-			if (end != std::string_view::npos) {
-				i += include_directive.size();
-				if (i = source.find_first_not_of(" \t", i); i != std::string_view::npos) {
-					const auto quote_char = source[i++];
-					if (quote_char != '\"' && quote_char != '<') {
-						throw shader_error{fmt::format("Invalid filename quote in include directive in shader \"{}\"!", filename)};
-					}
-					const auto quote_begin = i;
-					i = source.find(quote_char, i);
-					const auto quote_end = i;
-					if (quote_end != std::string_view::npos) {
-						++i;
-						const auto quote = source.substr(quote_begin, quote_end - quote_begin);
-						const auto [it, inserted] = file_cache.try_emplace(std::string{quote});
-						const auto filename_prefix = filename.substr(0, filename.rfind('/') + 1);
-						auto included_filename = std::string{filename_prefix} + it->first;
-						if (inserted) {
-							auto included_file = std::ifstream{};
-							if (quote_char == '\"') {
-								included_file.open(included_filename);
-							}
-							if (!included_file) {
-								included_filename.erase(0, filename_prefix.size());
-								included_file.open(included_filename);
-								if (!included_file) {
-									throw shader_error{fmt::format("Failed to open included file \"{}\" in shader \"{}\"!", included_filename, filename)};
-								}
-							}
-							auto stream = std::ostringstream{};
-							stream << included_file.rdbuf();
-							it->second = std::move(stream).str();
-						}
-						preprocess(processed, file_cache, included_filename, it->second);
-					} else {
-						throw shader_error{fmt::format("Missing end quote for include directive filename in shader \"{}\"!", filename)};
-					}
-				} else {
-					throw shader_error{fmt::format("Missing filename for include directive in shader \"{}\"!", filename)};
-				}
-			}
-			processed.add(source.substr(begin, end - begin));
-		} while (i < source.size());
-	}
-
 	struct shader_deleter final {
 		auto operator()(GLuint p) const noexcept -> void {
 			glDeleteShader(p);

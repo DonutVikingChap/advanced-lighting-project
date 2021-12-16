@@ -7,13 +7,26 @@
 #include "lightmap.hpp"
 #include "model.hpp"
 
-#include <cstddef> // std::size_t
-#include <memory>  // std::shared_ptr
-#include <vector>  // std::vector
+#include <cstddef>                      // std::size_t
+#include <glm/gtc/matrix_transform.hpp> // glm::rotate, glm::scale, glm::translate
+#include <memory>                       // std::shared_ptr
+#include <vector>                       // std::vector
+
+struct scene_object_options final {
+	std::shared_ptr<model> model_ptr{};
+	vec3 position{};
+	vec3 scale{};
+	float angle = 0.0f;
+	vec3 axis{0.0f, 1.0f, 0.0f};
+};
 
 struct scene_object final {
-	std::shared_ptr<model> model_ptr{};
-	mat4 transform{1.0f};
+	explicit scene_object(const scene_object_options& options)
+		: model_ptr(options.model_ptr)
+		, transform(glm::rotate(glm::scale(glm::translate(mat4{1.0f}, options.position), options.scale), options.angle, options.axis)) {}
+
+	std::shared_ptr<model> model_ptr;
+	mat4 transform;
 	vec2 lightmap_offset{0.0f, 0.0f};
 	vec2 lightmap_scale{1.0f, 1.0f};
 };

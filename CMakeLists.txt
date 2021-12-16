@@ -10,9 +10,9 @@ add_executable(tsbk03 "src/main.cpp")
 target_include_directories(tsbk03 PRIVATE "src")
 target_compile_features(tsbk03 PRIVATE cxx_std_20)
 target_compile_options(tsbk03 PRIVATE
-	$<$<CXX_COMPILER_ID:GNU>:   -Wall -Wextra   -Wpedantic      -Werror                 $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
-	$<$<CXX_COMPILER_ID:Clang>: -Wall -Wextra   -Wpedantic      -Werror                 $<$<CONFIG:Debug>:-g>   $<$<NOT:$<CONFIG:Debug>>:-O3>>
-	$<$<CXX_COMPILER_ID:MSVC>:  /W3             /permissive-    /WX     /wd4996 /utf-8  $<$<CONFIG:Debug>:/Od>  $<$<NOT:$<CONFIG:Debug>>:/Ot>>)
+	$<$<CXX_COMPILER_ID:GNU>:   -std=c++20  -Wall -Wextra   -Wpedantic      -Werror                 $<$<CONFIG:Debug>:-g>   $<$<CONFIG:Release>:-O3>    $<$<CONFIG:MinSizeRel>:-Os> $<$<CONFIG:RelWithDebInfo>:-O3 -g>>
+	$<$<CXX_COMPILER_ID:Clang>: -std=c++20  -Wall -Wextra   -Wpedantic      -Werror                 $<$<CONFIG:Debug>:-g>   $<$<CONFIG:Release>:-O3>    $<$<CONFIG:MinSizeRel>:-Os> $<$<CONFIG:RelWithDebInfo>:-O3 -g>>
+	$<$<CXX_COMPILER_ID:MSVC>:  /std:c++20  /W3             /permissive-    /WX     /wd4996 /utf-8  $<$<CONFIG:Debug>:/Od>  $<$<CONFIG:Release>:/Ot>    $<$<CONFIG:MinSizeRel>:/Os> $<$<CONFIG:RelWithDebInfo>:/Ot /Od>>)
 target_link_libraries(tsbk03 PRIVATE
 	dependency_assimp
 	dependency_fmt

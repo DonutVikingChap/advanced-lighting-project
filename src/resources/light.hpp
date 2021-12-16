@@ -87,7 +87,7 @@ struct directional_light final {
 	float shadow_offset_factor;
 	float shadow_offset_units;
 	float shadow_light_size;
-	mat4 shadow_view_matrix{1.0f};
+	mat4 shadow_view_matrix{};
 	std::array<mat4, camera_cascade_count> shadow_matrices{};
 	std::array<float, camera_cascade_count> shadow_uv_sizes{};
 	std::array<float, camera_cascade_count> shadow_near_planes{};

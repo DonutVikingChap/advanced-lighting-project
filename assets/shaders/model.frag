@@ -103,59 +103,56 @@ void main() {
 	}
 
 	vec3 Lo = vec3(0.0);
-	for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
-		if (!directional_lights[i].is_active) {
-			continue;
-		}
 
+#for LIGHT_INDEX 0 DIRECTIONAL_LIGHT_COUNT
+	if (directional_lights[LIGHT_INDEX].is_active) {
 		float visibility = 1.0;
-		if (directional_lights[i].is_shadow_mapped) {
+		if (directional_lights[LIGHT_INDEX].is_shadow_mapped) {
 			int cascade_level = 0;
 			for (int i = 0; i < CSM_CASCADE_COUNT - 1; ++i) {
 				cascade_level += int(io_fragment_depth < cascade_levels_frustum_depths[i]);
 			}
 
-			vec4 fragment_position_in_light_space = io_fragment_positions_in_directional_light_space[i * CSM_CASCADE_COUNT + cascade_level];
+			vec4 fragment_position_in_light_space = io_fragment_positions_in_directional_light_space[LIGHT_INDEX * CSM_CASCADE_COUNT + cascade_level];
 			vec3 projected_coordinates = fragment_position_in_light_space.xyz;
 #if BAKING
-			visibility = texture(directional_shadow_maps[i], vec4(projected_coordinates.xy, cascade_level, projected_coordinates.z));
+			visibility = texture(directional_shadow_maps[LIGHT_INDEX], vec4(projected_coordinates.xy, cascade_level, projected_coordinates.z));
 #else
-			float light_size = directional_shadow_uv_sizes[i * CSM_CASCADE_COUNT + cascade_level];
-			float near_z = directional_shadow_near_planes[i * CSM_CASCADE_COUNT + cascade_level];
-			visibility = pcss(directional_shadow_maps[i], directional_depth_maps[i], projected_coordinates.xy, cascade_level, projected_coordinates.z, light_size, near_z);
+			float light_size = directional_shadow_uv_sizes[LIGHT_INDEX * CSM_CASCADE_COUNT + cascade_level];
+			float near_z = directional_shadow_near_planes[LIGHT_INDEX * CSM_CASCADE_COUNT + cascade_level];
+			visibility = pcss(directional_shadow_maps[LIGHT_INDEX], directional_depth_maps[LIGHT_INDEX], projected_coordinates.xy, cascade_level, projected_coordinates.z, light_size, near_z);
 #endif
 		}
 
 		Lo += visibility * pbr(
 			normal,
 			view_direction,
-			-directional_lights[i].direction,
+			-directional_lights[LIGHT_INDEX].direction,
 			n_dot_v,
-			directional_lights[i].color,
+			directional_lights[LIGHT_INDEX].color,
 			albedo,
 			metallic,
 			roughness,
 			reflectivity);
 	}
-	for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
-		if (!point_lights[i].is_active) {
-			continue;
-		}
+#endfor
 
-		vec3 frag_to_light = point_lights[i].position - io_fragment_position;
+#for LIGHT_INDEX 0 POINT_LIGHT_COUNT
+	if (point_lights[LIGHT_INDEX].is_active) {
+		vec3 frag_to_light = point_lights[LIGHT_INDEX].position - io_fragment_position;
 		float light_distance_squared = dot(frag_to_light, frag_to_light);
 		float light_distance = sqrt(light_distance_squared);
 		vec3 light_direction = frag_to_light / light_distance;
 		
-		float attenuation = 1.0 / (point_lights[i].constant + point_lights[i].linear * light_distance + point_lights[i].quadratic * light_distance_squared);
+		float attenuation = 1.0 / (point_lights[LIGHT_INDEX].constant + point_lights[LIGHT_INDEX].linear * light_distance + point_lights[LIGHT_INDEX].quadratic * light_distance_squared);
 
 		float visibility = 1.0;
-		if (point_lights[i].is_shadow_mapped) {
-			float receiver_z = cube_depth(-frag_to_light, point_lights[i].shadow_near_z, point_lights[i].shadow_far_z);
+		if (point_lights[LIGHT_INDEX].is_shadow_mapped) {
+			float receiver_z = cube_depth(-frag_to_light, point_lights[LIGHT_INDEX].shadow_near_z, point_lights[LIGHT_INDEX].shadow_far_z);
 #if BAKING
-			visibility = texture(point_shadow_maps[i], vec4(-frag_to_light, receiver_z));
+			visibility = texture(point_shadow_maps[LIGHT_INDEX], vec4(-frag_to_light, receiver_z));
 #else
-			visibility = pcf_filter_cube(point_shadow_maps[i], -frag_to_light, receiver_z, point_lights[i].shadow_filter_radius);
+			visibility = pcf_filter_cube(point_shadow_maps[LIGHT_INDEX], -frag_to_light, receiver_z, point_lights[LIGHT_INDEX].shadow_filter_radius);
 #endif
 		}
 
@@ -164,35 +161,35 @@ void main() {
 			view_direction,
 			light_direction,
 			n_dot_v,
-			point_lights[i].color,
+			point_lights[LIGHT_INDEX].color,
 			albedo,
 			metallic,
 			roughness,
 			reflectivity);
 	}
-	for (int i = 0; i < SPOT_LIGHT_COUNT; ++i) {
-		if (!spot_lights[i].is_active) {
-			continue;
-		}
-		vec3 frag_to_light = spot_lights[i].position - io_fragment_position;
+#endfor
+
+#for LIGHT_INDEX 0 SPOT_LIGHT_COUNT
+	if (spot_lights[LIGHT_INDEX].is_active) {
+		vec3 frag_to_light = spot_lights[LIGHT_INDEX].position - io_fragment_position;
 		float light_distance_squared = dot(frag_to_light, frag_to_light);
 		float light_distance = sqrt(light_distance_squared);
 		vec3 light_direction = frag_to_light * (1.0 / light_distance);
 
-		float theta = dot(light_direction, -spot_lights[i].direction);
-		float epsilon = spot_lights[i].inner_cutoff - spot_lights[i].outer_cutoff;
-		float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[i].outer_cutoff) / epsilon);
+		float theta = dot(light_direction, -spot_lights[LIGHT_INDEX].direction);
+		float epsilon = spot_lights[LIGHT_INDEX].inner_cutoff - spot_lights[LIGHT_INDEX].outer_cutoff;
+		float intensity = smoothstep(0.0, 1.0, (theta - spot_lights[LIGHT_INDEX].outer_cutoff) / epsilon);
 
-		float attenuation = 1.0 / (spot_lights[i].constant + spot_lights[i].linear * light_distance + spot_lights[i].quadratic * light_distance_squared);
+		float attenuation = 1.0 / (spot_lights[LIGHT_INDEX].constant + spot_lights[LIGHT_INDEX].linear * light_distance + spot_lights[LIGHT_INDEX].quadratic * light_distance_squared);
 		
 		float visibility = 1.0;
-		if (spot_lights[i].is_shadow_mapped) {
-			vec4 fragment_position_in_light_space = io_fragment_positions_in_spot_light_space[i];
+		if (spot_lights[LIGHT_INDEX].is_shadow_mapped) {
+			vec4 fragment_position_in_light_space = io_fragment_positions_in_spot_light_space[LIGHT_INDEX];
 			vec3 projected_coordinates = fragment_position_in_light_space.xyz / fragment_position_in_light_space.w;
 #if BAKING
-			visibility = texture(spot_shadow_maps[i], projected_coordinates);
+			visibility = texture(spot_shadow_maps[LIGHT_INDEX], projected_coordinates);
 #else
-			visibility = pcf_filter(spot_shadow_maps[i], projected_coordinates.xy, projected_coordinates.z, spot_lights[i].shadow_filter_radius);
+			visibility = pcf_filter(spot_shadow_maps[LIGHT_INDEX], projected_coordinates.xy, projected_coordinates.z, spot_lights[LIGHT_INDEX].shadow_filter_radius);
 #endif
 		}
 
@@ -201,12 +198,13 @@ void main() {
 			view_direction,
 			light_direction,
 			n_dot_v,
-			spot_lights[i].color,
+			spot_lights[LIGHT_INDEX].color,
 			albedo,
 			metallic,
 			roughness,
 			reflectivity);
 	}
+#endfor
 
 #if BAKING
 	out_fragment_color = vec4(Lo + ambient, (gl_FrontFacing) ? alpha : 0.0);

@@ -39,10 +39,6 @@ public:
 					  std::make_shared<point_light>(point_light_options{
 						  .position = {-1.8f, 1.8f, 1.75f},
 						  .color = {0.8f, 0.8f, 0.8f},
-						  .constant = 1.0f,
-						  .linear = 0.045f,
-						  .quadratic = 0.0075f,
-						  .is_shadow_mapped = true,
 					  }),
 				  },
 			  .spot_lights =
@@ -51,44 +47,47 @@ public:
 						  .position = {-28.0f, 4.3f, -1.0f},
 						  .direction = vec3{-0.85f, -0.48f, 0.0f},
 						  .color = {1.0f, 1.0f, 1.0f},
-						  .constant = 1.0f,
-						  .linear = 0.045f,
-						  .quadratic = 0.0075f,
 						  .inner_cutoff = cos(radians(20.0f)),
 						  .outer_cutoff = cos(radians(45.0f)),
-						  .is_shadow_mapped = true,
 					  }),
 				  },
 			  .objects =
 				  {
-					  {
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/sponza/sponza.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{0.0f, -3.0f, 0.0f}), vec3{0.0254f}),
-					  },
-					  {
+						  .position = vec3{0.0f, -3.0f, 0.0f},
+						  .scale = vec3{0.0254f},
+					  }},
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/alarm_clock_01_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{2.0f, 0.0f, -3.0f}), vec3{15.0f}),
-					  },
-					  {
+						  .position = vec3{2.0f, 0.0f, -3.0f},
+						  .scale = vec3{15.0f},
+					  }},
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/suzanne.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{0.0f, 0.0f, 0.0f}), vec3{1.0f}),
-					  },
-					  {
+						  .position = vec3{0.0f, 0.0f, 0.0f},
+						  .scale = vec3{1.0f},
+					  }},
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/tea_set_01_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{4.0f, -1.0f, 0.0f}), vec3{10.0f}),
-					  },
-					  {
+						  .position = vec3{4.0f, -1.0f, 0.0f},
+						  .scale = vec3{10.0f},
+					  }},
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/brass_vase_01_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{-3.0f, -1.0f, -2.0f}), vec3{6.0f}),
-					  },
-					  {
+						  .position = vec3{-3.0f, -1.0f, -2.0f},
+						  .scale = vec3{6.0f},
+					  }},
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{5.0f, 20.0f, -1.0f}), vec3{6.0f}),
-					  },
-					  {
+						  .position = vec3{5.0f, 20.0f, -1.0f},
+						  .scale = vec3{6.0f},
+					  }},
+					  scene_object{scene_object_options{
 						  .model_ptr = asset_manager.load_model("assets/models/Chandelier_03_1k.obj", "assets/textures/"),
-						  .transform = glm::scale(glm::translate(mat4{1.0f}, vec3{-5.0f, 20.0f, -1.0f}), vec3{6.0f}),
-					  },
+						  .position = vec3{-5.0f, 20.0f, -1.0f},
+						  .scale = vec3{6.0f},
+					  }},
 				  },
 		  } {
 		lightmap_generator::reset_lightmap(m_scene);
@@ -151,7 +150,7 @@ public:
 						}
 						ImGui::SliderFloat3("Color", glm::value_ptr(m_scene.directional_lights[i]->color), 0.0f, 5.0f);
 						ImGui::SliderFloat("Shadow offset factor", &m_scene.directional_lights[i]->shadow_offset_factor, 0.0f, 10.0f);
-						ImGui::SliderFloat("Shadow offset units", &m_scene.directional_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
+						ImGui::SliderFloat("Shadow offset units", &m_scene.directional_lights[i]->shadow_offset_units, 0.0f, 16384.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.directional_lights.erase(m_scene.directional_lights.begin() + static_cast<std::ptrdiff_t>(i));
 							--i;
@@ -184,7 +183,7 @@ public:
 							m_scene.point_lights[i]->update_shadow_transform();
 						}
 						ImGui::SliderFloat("Shadow offset factor", &m_scene.point_lights[i]->shadow_offset_factor, 0.0f, 32.0f);
-						ImGui::SliderFloat("Shadow offset units", &m_scene.point_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
+						ImGui::SliderFloat("Shadow offset units", &m_scene.point_lights[i]->shadow_offset_units, 0.0f, 16384.0f);
 						ImGui::SliderFloat("Shadow filter radius", &m_scene.point_lights[i]->shadow_filter_radius, 0.0f, 1.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.point_lights.erase(m_scene.point_lights.begin() + static_cast<std::ptrdiff_t>(i));
@@ -231,7 +230,7 @@ public:
 							m_scene.spot_lights[i]->update_shadow_transform();
 						}
 						ImGui::SliderFloat("Shadow offset factor", &m_scene.spot_lights[i]->shadow_offset_factor, 0.0f, 32.0f);
-						ImGui::SliderFloat("Shadow offset units", &m_scene.spot_lights[i]->shadow_offset_units, 0.0f, 8192.0f);
+						ImGui::SliderFloat("Shadow offset units", &m_scene.spot_lights[i]->shadow_offset_units, 0.0f, 16384.0f);
 						ImGui::SliderFloat("Shadow filter radius", &m_scene.spot_lights[i]->shadow_filter_radius, 0.0f, 10.0f);
 						if (ImGui::Button("Remove")) {
 							m_scene.spot_lights.erase(m_scene.spot_lights.begin() + static_cast<std::ptrdiff_t>(i));
