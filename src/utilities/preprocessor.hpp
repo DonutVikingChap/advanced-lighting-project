@@ -1,8 +1,9 @@
 #ifndef PREPROCESSOR_HPP
 #define PREPROCESSOR_HPP
 
+#include "calculator.hpp"
+
 #include <algorithm>     // std::all_of, std::find, std::find_if, std::find_if_not, std::search
-#include <charconv>      // std::from_chars, std::errc
 #include <cstddef>       // std::size_t, std::ptrdiff_t
 #include <cstdint>       // std::uint8_t
 #include <fmt/format.h>  // fmt::format, fmt::to_string
@@ -48,7 +49,8 @@ public:
 private:
 	enum class terminator_token : std::uint8_t {
 		end_of_input,
-		elif_directive,
+		elif_true,
+		elif_false,
 		else_directive,
 		endif_directive,
 		endfor_directive,
@@ -94,7 +96,8 @@ private:
 	auto process_file() -> void {
 		switch (process()) {
 			case terminator_token::end_of_input: break;
-			case terminator_token::elif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
+			case terminator_token::elif_true: [[fallthrough]];
+			case terminator_token::elif_false: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
 			case terminator_token::else_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected else"};
 			case terminator_token::endif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endif"};
 			case terminator_token::endfor_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endfor"};
@@ -130,56 +133,44 @@ private:
 				if (line[begin] == '#') {
 					auto str = std::string_view{line}.substr(begin + 1);
 					if (str.compare(0, directive_include.size(), directive_include) == 0) {
-						str.remove_prefix(directive_include.size());
-						process_include(str);
-						continue;
-					}
-					if (str.compare(0, directive_for.size(), directive_for) == 0) {
-						str.remove_prefix(directive_for.size());
-						process_for(str);
-						continue;
-					}
-					if (str.compare(0, directive_define.size(), directive_define) == 0) {
-						str.remove_prefix(directive_define.size());
-						process_define(str);
+						process_include(str.substr(directive_include.size()));
+					} else if (str.compare(0, directive_for.size(), directive_for) == 0) {
+						process_for(str.substr(directive_for.size()));
+					} else if (str.compare(0, directive_define.size(), directive_define) == 0) {
+						process_define(str.substr(directive_define.size()));
+						if (m_active) {
+							line.push_back('\n');
+							m_output.push_back(std::move(line));
+						}
 					} else if (str.compare(0, directive_undef.size(), directive_undef) == 0) {
-						str.remove_prefix(directive_undef.size());
-						process_undef(str);
+						process_undef(str.substr(directive_undef.size()));
+						if (m_active) {
+							line.push_back('\n');
+							m_output.push_back(std::move(line));
+						}
 					} else if (str.compare(0, directive_ifdef.size(), directive_ifdef) == 0) {
-						str.remove_prefix(directive_ifdef.size());
-						process_ifdef(str);
-						continue;
+						process_ifdef(str.substr(directive_ifdef.size()));
 					} else if (str.compare(0, directive_ifndef.size(), directive_ifndef) == 0) {
-						str.remove_prefix(directive_ifndef.size());
-						process_ifndef(str);
-						continue;
+						process_ifndef(str.substr(directive_ifndef.size()));
 					} else if (str.compare(0, directive_if.size(), directive_if) == 0) {
-						if (m_active) {
-							line.push_back('\n');
-							m_output.push_back(std::move(line));
-						}
-						process_if();
-						continue;
+						process_if(str.substr(directive_if.size()));
 					} else if (str.compare(0, directive_elif.size(), directive_elif) == 0) {
-						if (m_active) {
-							line.push_back('\n');
-							m_output.push_back(std::move(line));
-						}
-						return terminator_token::elif_directive;
+						auto elif_arguments = std::string{str.substr(directive_elif.size())};
+						expand_line(elif_arguments, nullptr, "");
+						auto i = std::size_t{0};
+						return (read_boolean(elif_arguments, i)) ? terminator_token::elif_true : terminator_token::elif_false;
 					} else if (str.compare(0, directive_else.size(), directive_else) == 0) {
 						return terminator_token::else_directive;
 					} else if (str.compare(0, directive_endif.size(), directive_endif) == 0) {
 						return terminator_token::endif_directive;
 					} else if (str.compare(0, directive_error.size(), directive_error) == 0) {
-						str.remove_prefix(directive_error.size());
-						if (const auto message_begin = str.find_first_not_of(" \t\n"); message_begin != std::string_view::npos) {
+						if (const auto message_begin = str.find_first_not_of(" \t\n", directive_error.size()); message_begin != std::string_view::npos) {
 							throw preprocessor_error{m_filename, m_line_number, str.substr(message_begin)};
 						}
 						throw preprocessor_error{m_filename, m_line_number, "Missing error message"};
 					} else if (str.compare(0, directive_endfor.size(), directive_endfor) == 0) {
 						return terminator_token::endfor_directive;
-					}
-					if (m_active) {
+					} else if (m_active) {
 						line.push_back('\n');
 						m_output.push_back(std::move(line));
 					}
@@ -201,19 +192,49 @@ private:
 		return terminator_token::end_of_input;
 	}
 
-	[[nodiscard]] auto read_index(std::string_view str, std::size_t& i) -> std::size_t {
+	[[nodiscard]] auto read_argument(std::string_view str, std::size_t& i) -> std::string_view {
 		i = str.find_first_not_of(" \t\n", i);
 		if (i == std::string_view::npos) {
-			throw preprocessor_error{m_filename, m_line_number, "Missing index"};
+			throw preprocessor_error{m_filename, m_line_number, "Missing argument"};
 		}
 		const auto begin = i;
-		i = str.find_first_not_of(" \t\n", begin + 1);
-		const auto index_string = str.substr(begin, i - begin);
-		auto result = std::size_t{};
-		if (std::from_chars(index_string.data(), index_string.data() + index_string.size(), result).ec != std::errc{}) {
-			throw preprocessor_error{m_filename, m_line_number, "Invalid index"};
+		auto parenthesis_level = 0u;
+		while (i < str.size()) {
+			if (str[i] == '(') {
+				++parenthesis_level;
+			} else if (str[i] == ')') {
+				if (parenthesis_level == 0) {
+					throw preprocessor_error{m_filename, m_line_number, "Mismatched parenthesis"};
+				}
+				--parenthesis_level;
+			} else if (str[i] == ',') {
+				const auto end = i;
+				++i;
+				return str.substr(begin, end - begin);
+			}
+			++i;
 		}
-		return result;
+		return str.substr(begin, i - begin);
+	}
+
+	[[nodiscard]] auto read_index(std::string_view str, std::size_t& i) -> std::size_t {
+		try {
+			auto calc = calculator<long long>{};
+			calc.parse(read_argument(str, i));
+			return static_cast<std::size_t>(calc.evaluate());
+		} catch (const calculator_error& e) {
+			throw preprocessor_error{m_filename, m_line_number, e.what()};
+		}
+	}
+
+	[[nodiscard]] auto read_boolean(std::string_view str, std::size_t& i) -> bool {
+		try {
+			auto calc = calculator<long long>{};
+			calc.parse(read_argument(str, i));
+			return static_cast<bool>(calc.evaluate());
+		} catch (const calculator_error& e) {
+			throw preprocessor_error{m_filename, m_line_number, e.what()};
+		}
 	}
 
 	auto expand_line(std::string& line, const argument_map* args, std::string_view va_args) -> void {
@@ -482,7 +503,8 @@ private:
 		auto line_number = std::size_t{0};
 		switch (preprocessor{m_filename, line_number, it->second, m_output, m_environment, m_file_cache, m_active}.process()) {
 			case terminator_token::end_of_input: break;
-			case terminator_token::elif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
+			case terminator_token::elif_true: [[fallthrough]];
+			case terminator_token::elif_false: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
 			case terminator_token::else_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected else"};
 			case terminator_token::endif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endif"};
 			case terminator_token::endfor_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endfor"};
@@ -508,7 +530,8 @@ private:
 			define_macro(name, fmt::to_string(index));
 			switch (process()) {
 				case terminator_token::end_of_input: throw preprocessor_error{m_filename, m_line_number, "Missing endfor"};
-				case terminator_token::elif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
+				case terminator_token::elif_true: [[fallthrough]];
+				case terminator_token::elif_false: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
 				case terminator_token::else_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected else"};
 				case terminator_token::endif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endif"};
 				case terminator_token::endfor_directive: break;
@@ -573,35 +596,23 @@ private:
 		process_conditional(m_environment.defined_names.count(name) == 0);
 	}
 
+	auto process_if(std::string_view str) -> void {
+		auto line = std::string{str};
+		expand_line(line, nullptr, "");
+		auto i = std::size_t{0};
+		process_conditional(read_boolean(line, i));
+	}
+
 	auto process_conditional(bool condition) -> void {
 		const auto was_active = m_active;
 		m_active = was_active && condition;
-		switch (process()) {
-			case terminator_token::end_of_input: throw preprocessor_error{m_filename, m_line_number, "Missing endif"};
-			case terminator_token::elif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
-			case terminator_token::else_directive:
-				m_active = was_active && !condition;
-				switch (process()) {
-					case terminator_token::end_of_input: throw preprocessor_error{m_filename, m_line_number, "Missing endif"};
-					case terminator_token::elif_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected elif"};
-					case terminator_token::else_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected else"};
-					case terminator_token::endif_directive: break;
-					case terminator_token::endfor_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endfor"};
-				}
-				break;
-			case terminator_token::endif_directive: break;
-			case terminator_token::endfor_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endfor"};
-		}
-		m_active = was_active;
-	}
-
-	auto process_if() -> void {
 		while (true) {
 			switch (process()) {
 				case terminator_token::end_of_input: throw preprocessor_error{m_filename, m_line_number, "Missing endif"};
-				case terminator_token::elif_directive: break;
-				case terminator_token::else_directive: m_output.emplace_back("\n#else\n"); break;
-				case terminator_token::endif_directive: m_output.emplace_back("\n#endif\n"); return;
+				case terminator_token::elif_true: m_active = was_active && !m_active; break;
+				case terminator_token::elif_false: m_active = false; break;
+				case terminator_token::else_directive: m_active = was_active && !m_active; break;
+				case terminator_token::endif_directive: m_active = was_active; return;
 				case terminator_token::endfor_directive: throw preprocessor_error{m_filename, m_line_number, "Unexpected endfor"};
 			}
 		}

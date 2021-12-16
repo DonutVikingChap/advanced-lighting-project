@@ -47,7 +47,8 @@ public:
 
 	auto draw_model(std::shared_ptr<model> model, const mat4& transform) -> void {
 		const auto position = vec3{transform[3]};
-		const auto extents = vec3{model->bounding_sphere_radius()};
+		const auto scale = vec3{transform[0][0], transform[1][1], transform[2][2]};
+		const auto extents = vec3{model->bounding_sphere_radius()} * scale;
 		m_world_aabb_min = min(m_world_aabb_min, position - extents);
 		m_world_aabb_max = max(m_world_aabb_max, position + extents);
 		m_model_instances[std::move(model)].emplace_back(transform);

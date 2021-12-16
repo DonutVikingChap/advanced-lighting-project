@@ -19,16 +19,6 @@ public:
 #endif
 	}
 
-	auto start_controlling() noexcept -> void {
-		m_inputs.controlling = true;
-		SDL_SetRelativeMouseMode(SDL_TRUE);
-	}
-
-	auto stop_controlling() noexcept -> void {
-		m_inputs = {};
-		SDL_SetRelativeMouseMode(SDL_FALSE);
-	}
-
 	auto handle_event(const SDL_Event& e, float mouse_sensitivity) -> void {
 		if (m_inputs.controlling) {
 			switch (e.type) {
@@ -108,7 +98,17 @@ public:
 		m_position += average_velocity * delta_time;
 	}
 
-	[[nodiscard]] auto controlling() const noexcept -> bool {
+	auto start_controlling() noexcept -> void {
+		m_inputs.controlling = true;
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+	}
+
+	auto stop_controlling() noexcept -> void {
+		m_inputs = {};
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+	}
+
+	[[nodiscard]] auto is_controlling() const noexcept -> bool {
 		return m_inputs.controlling;
 	}
 

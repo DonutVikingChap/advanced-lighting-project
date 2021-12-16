@@ -104,7 +104,7 @@ void main() {
 
 	vec3 Lo = vec3(0.0);
 
-#for LIGHT_INDEX 0 DIRECTIONAL_LIGHT_COUNT
+#for LIGHT_INDEX 0, DIRECTIONAL_LIGHT_COUNT
 	if (directional_lights[LIGHT_INDEX].is_active) {
 		float visibility = 1.0;
 		if (directional_lights[LIGHT_INDEX].is_shadow_mapped) {
@@ -137,7 +137,7 @@ void main() {
 	}
 #endfor
 
-#for LIGHT_INDEX 0 POINT_LIGHT_COUNT
+#for LIGHT_INDEX 0, POINT_LIGHT_COUNT
 	if (point_lights[LIGHT_INDEX].is_active) {
 		vec3 frag_to_light = point_lights[LIGHT_INDEX].position - io_fragment_position;
 		float light_distance_squared = dot(frag_to_light, frag_to_light);
@@ -169,7 +169,7 @@ void main() {
 	}
 #endfor
 
-#for LIGHT_INDEX 0 SPOT_LIGHT_COUNT
+#for LIGHT_INDEX 0, SPOT_LIGHT_COUNT
 	if (spot_lights[LIGHT_INDEX].is_active) {
 		vec3 frag_to_light = spot_lights[LIGHT_INDEX].position - io_fragment_position;
 		float light_distance_squared = dot(frag_to_light, frag_to_light);

@@ -107,7 +107,7 @@ public:
 	[[nodiscard]] static auto create_2d_uninitialized(GLint internal_format, std::size_t width, std::size_t height, const texture_options& options) -> texture {
 		const auto is_depth = is_depth_internal_format(internal_format);
 		const auto format = (is_depth) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
-		const auto type = (is_depth) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
+		const auto type = (is_depth) ? GLenum{GL_FLOAT} : GLenum{GL_UNSIGNED_BYTE};
 		return create_2d(internal_format, width, height, format, type, nullptr, options);
 	}
 
@@ -124,7 +124,10 @@ public:
 
 	[[nodiscard]] static auto create_2d_array_uninitialized(GLint internal_format, std::size_t width, std::size_t height, std::size_t depth, const texture_options& options)
 		-> texture {
-		return create_2d_array(internal_format, width, height, depth, GL_RED, GL_UNSIGNED_BYTE, nullptr, options);
+		const auto is_depth = is_depth_internal_format(internal_format);
+		const auto format = (is_depth) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
+		const auto type = (is_depth) ? GLenum{GL_FLOAT} : GLenum{GL_UNSIGNED_BYTE};
+		return create_2d_array(internal_format, width, height, depth, format, type, nullptr, options);
 	}
 
 	[[nodiscard]] static auto create_cubemap(GLint internal_format, std::size_t resolution, GLenum format, GLenum type, const void* pixels_px, const void* pixels_nx,
@@ -145,7 +148,7 @@ public:
 	[[nodiscard]] static auto create_cubemap_uninitialized(GLint internal_format, std::size_t resolution, const texture_options& options) -> texture {
 		const auto is_depth = is_depth_internal_format(internal_format);
 		const auto format = (is_depth) ? GLenum{GL_DEPTH_COMPONENT} : GLenum{GL_RED};
-		const auto type = (is_depth) ? GLenum{GL_UNSIGNED_BYTE} : GLenum{GL_FLOAT};
+		const auto type = (is_depth) ? GLenum{GL_FLOAT} : GLenum{GL_UNSIGNED_BYTE};
 		return create_cubemap(internal_format, resolution, format, type, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, options);
 	}
 

@@ -81,6 +81,8 @@ float pcss_penumbra_size(float z, float blocker_z) {
 }
 
 float pcss(sampler2DArrayShadow shadow_map, sampler2DArray depth_map, vec2 uv, float layer, float z, float light_size, float near_z) {
+    return pcf_filter_array(shadow_map, uv, layer, z, 0.1); // TODO: Remove
+
     float blocker_count = 0.0;
     float average_blocker_z = pcss_average_blocker_z(blocker_count, depth_map, uv, layer, z, light_size, near_z);
     if (blocker_count < 1.0) {

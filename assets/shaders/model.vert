@@ -35,13 +35,16 @@ void main() {
 	io_bitangent = normal_matrix * in_bitangent;
 	io_texture_coordinates = in_texture_coordinates;
 	io_lightmap_coordinates = lightmap_offset + in_lightmap_coordinates * lightmap_scale;
-	for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
-		for (int cascade_level = 0; cascade_level < CSM_CASCADE_COUNT; ++cascade_level) {
-			io_fragment_positions_in_directional_light_space[i * CSM_CASCADE_COUNT + cascade_level] = directional_shadow_matrices[i * CSM_CASCADE_COUNT + cascade_level] * vec4(io_fragment_position, 1.0);
-		}
-	}
-	for (int i = 0; i < SPOT_LIGHT_COUNT; ++i) {
-		io_fragment_positions_in_spot_light_space[i] = spot_shadow_matrices[i] * vec4(io_fragment_position, 1.0);
-	}
+
+#for LIGHT_INDEX 0, DIRECTIONAL_LIGHT_COUNT
+#for CASCADE_LEVEL 0, CSM_CASCADE_COUNT
+	io_fragment_positions_in_directional_light_space[LIGHT_INDEX * CSM_CASCADE_COUNT + CASCADE_LEVEL] = directional_shadow_matrices[LIGHT_INDEX * CSM_CASCADE_COUNT + CASCADE_LEVEL] * vec4(io_fragment_position, 1.0);
+#endfor
+#endfor
+
+#for LIGHT_INDEX 0, SPOT_LIGHT_COUNT
+	io_fragment_positions_in_spot_light_space[LIGHT_INDEX] = spot_shadow_matrices[LIGHT_INDEX] * vec4(io_fragment_position, 1.0);
+#endfor
+
 	gl_Position = projection_matrix * fragment_in_view_space;
 }
