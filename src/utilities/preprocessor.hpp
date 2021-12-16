@@ -28,13 +28,9 @@ struct preprocessor_environment final {
 		bool variadic = false;
 	};
 
-	using name_set = std::unordered_set<std::string>;
-	using macro_definitions = std::unordered_map<std::string_view, std::string>;
-	using function_macro_definitions = std::unordered_map<std::string_view, function_macro_definition>;
-
-	name_set defined_names{};
-	macro_definitions macros{};
-	function_macro_definitions function_macros{};
+	std::unordered_set<std::string> defined_names{};
+	std::unordered_map<std::string_view, std::string> macros{};
+	std::unordered_map<std::string_view, function_macro_definition> function_macros{};
 };
 
 class preprocessor final {
