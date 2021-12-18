@@ -27,8 +27,9 @@ struct directional_light_options final {
 	vec3 direction{0.0f, -1.0f, 0.0f};
 	vec3 color{1.0f, 1.0f, 1.0f};
 	float shadow_offset_factor = 1.1f;
-	float shadow_offset_units = 128.0f;
+	float shadow_offset_units = 4096.0f;
 	float shadow_light_size = 0.414f;
+	float shadow_near_plane = 2.0f;
 	std::size_t shadow_resolution = 2048;
 	bool is_shadow_mapped = true;
 };
@@ -70,7 +71,8 @@ struct directional_light final {
 		, color(options.color)
 		, shadow_offset_factor(options.shadow_offset_factor)
 		, shadow_offset_units(options.shadow_offset_units)
-		, shadow_light_size(options.shadow_light_size) {
+		, shadow_light_size(options.shadow_light_size)
+		, shadow_near_plane(options.shadow_near_plane) {
 		if (options.is_shadow_mapped) {
 			shadow_map = texture::create_2d_array_uninitialized(
 				shadow_map_internal_format, options.shadow_resolution, options.shadow_resolution, camera_cascade_count, shadow_map_options);
@@ -79,7 +81,11 @@ struct directional_light final {
 	}
 
 	auto update_shadow_transform() -> void {
-		shadow_view_matrix = glm::lookAt(vec3{}, direction, vec3{0.0f, 1.0f, 0.0f});
+		auto up = vec3{0.0f, 1.0f, 0.0f};
+		if (direction == up || direction == -up) {
+			up = vec3{0.0f, 0.0f, 1.0f};
+		}
+		shadow_view_matrix = glm::lookAt(vec3{}, direction, up);
 	}
 
 	vec3 direction;
@@ -87,6 +93,7 @@ struct directional_light final {
 	float shadow_offset_factor;
 	float shadow_offset_units;
 	float shadow_light_size;
+	float shadow_near_plane;
 	mat4 shadow_view_matrix{};
 	std::array<mat4, camera_cascade_count> shadow_matrices{};
 	std::array<float, camera_cascade_count> shadow_uv_sizes{};

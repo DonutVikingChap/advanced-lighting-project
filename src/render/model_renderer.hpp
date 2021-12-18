@@ -258,7 +258,7 @@ private:
 		shader_array<shader_uniform, point_light_count> point_shadow_maps{program.get(), "point_shadow_maps"};
 		shader_array<shader_uniform, spot_light_count> spot_shadow_maps{program.get(), "spot_shadow_maps"};
 		shader_array<shader_uniform, spot_light_count> spot_shadow_matrices{program.get(), "spot_shadow_matrices"};
-		shader_array<shader_uniform, camera_cascade_count> cascade_levels_frustrum_depths{program.get(), "cascade_levels_frustrum_depths"};
+		shader_array<shader_uniform, camera_cascade_count> cascade_frustum_depths{program.get(), "cascade_frustum_depths"};
 	};
 
 	struct model_instance final {
@@ -298,6 +298,9 @@ private:
 		glUniformMatrix4fv(shader.projection_matrix.location(), 1, GL_FALSE, glm::value_ptr(camera.projection_matrix));
 		glUniformMatrix4fv(shader.view_matrix.location(), 1, GL_FALSE, glm::value_ptr(camera.view_matrix));
 		glUniform3fv(shader.view_position.location(), 1, glm::value_ptr(camera.position));
+		for (auto cascade_level = std::size_t{0}; cascade_level < camera_cascade_count; ++cascade_level) {
+			glUniform1f(shader.cascade_frustum_depths[cascade_level].location(), camera.cascade_frustum_depths[cascade_level]);
+		}
 
 		// Upload lightmap.
 		glActiveTexture(GL_TEXTURE0 + lightmap_texture_unit);

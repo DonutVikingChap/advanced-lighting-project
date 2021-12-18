@@ -98,6 +98,14 @@ private:
 				}
 			}
 			ImGui::End();
+
+			ImGui::Begin("Camera");
+			for (auto cascade_level = std::size_t{0}; cascade_level < camera_cascade_count; ++cascade_level) {
+				if (ImGui::SliderFloat(fmt::format("Cascade {}", cascade_level).c_str(), &m_camera.cascade_levels[cascade_level], 0.0f, 1.0f)) {
+					m_camera.update_cascade_frustums();
+				}
+			}
+			ImGui::End();
 		}
 		m_world.draw(m_renderer);
 		draw_fps_counter();

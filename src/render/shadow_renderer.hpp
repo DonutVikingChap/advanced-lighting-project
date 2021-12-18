@@ -85,14 +85,14 @@ public:
 				glViewport(0, 0, static_cast<GLsizei>(light.shadow_map.width()), static_cast<GLsizei>(light.shadow_map.height()));
 				glClear(GL_DEPTH_BUFFER_BIT);
 
-				auto shadow_volume_min = vec3{std::numeric_limits<float>::max()};
-				auto shadow_volume_max = vec3{-std::numeric_limits<float>::max()};
+				auto z_min = std::numeric_limits<float>::max();
+				auto z_max = -std::numeric_limits<float>::max();
 
 				// Fit shadow near/far plane to world AABB.
 				for (const auto& world_aabb_corner : world_aabb_corners) {
 					const auto z = (light.shadow_view_matrix * vec4{world_aabb_corner, 1.0f}).z;
-					shadow_volume_min.z = min(shadow_volume_min.z, z);
-					shadow_volume_max.z = max(shadow_volume_max.z, z);
+					z_min = min(z_min, z);
+					z_max = max(z_max, z);
 				}
 
 				// Get view frustum in world space.
@@ -108,40 +108,36 @@ public:
 				};
 				const auto view_frustum_diagonal_length = length(view_frustum_corners[4] - view_frustum_corners[2]);
 
+				auto area_min = vec2{std::numeric_limits<float>::max()};
+				auto area_max = vec2{-std::numeric_limits<float>::max()};
+
 				// Fit shadow area to view frustum.
 				for (const auto& view_frustum_corner : view_frustum_corners) {
 					const auto xy = vec2{light.shadow_view_matrix * vec4{view_frustum_corner, 1.0f}};
-					shadow_volume_min.x = min(shadow_volume_min.x, xy.x);
-					shadow_volume_min.y = min(shadow_volume_min.y, xy.y);
-					shadow_volume_max.x = max(shadow_volume_max.x, xy.x);
-					shadow_volume_max.y = max(shadow_volume_max.y, xy.y);
+					area_min = min(area_min, xy);
+					area_max = max(area_max, xy);
 				}
 
 				// Pad shadow area.
-				const auto padding = (vec2{view_frustum_diagonal_length} - (vec2{shadow_volume_max} - vec2{shadow_volume_min})) * 0.5f;
-				shadow_volume_min.x -= padding.x;
-				shadow_volume_min.y -= padding.y;
-				shadow_volume_max.x += padding.x;
-				shadow_volume_max.y += padding.y;
+				const auto padding = (vec2{view_frustum_diagonal_length} - (area_max - area_min)) * 0.5f;
+				area_min -= padding;
+				area_max += padding;
 
 				// Snap the camera to 1 pixel increments so that moving the camera does not cause shadows to jitter.
 				const auto world_units_per_texel = shadow_map_texel_size * view_frustum_diagonal_length;
-				shadow_volume_min.x -= floor(shadow_volume_min.x / world_units_per_texel.x) * world_units_per_texel.x;
-				shadow_volume_min.y -= floor(shadow_volume_min.y / world_units_per_texel.y) * world_units_per_texel.y;
-				shadow_volume_max.x += floor(shadow_volume_max.x / world_units_per_texel.x) * world_units_per_texel.x;
-				shadow_volume_max.y += floor(shadow_volume_max.y / world_units_per_texel.y) * world_units_per_texel.y;
+				area_min = floor(area_min / world_units_per_texel) * world_units_per_texel;
+				area_max = floor(area_max / world_units_per_texel) * world_units_per_texel;
 
 				// Calculate projection matrix.
-				const auto shadow_projection_matrix = glm::ortho(
-					shadow_volume_min.x, shadow_volume_max.x, shadow_volume_min.y, shadow_volume_max.y, shadow_volume_min.z, shadow_volume_max.z);
+				const auto shadow_projection_matrix = glm::ortho(area_min.x, area_max.x, area_min.y, area_max.y, z_min, z_max);
 
 				// Calculate projection-view matrix.
 				const auto shadow_projection_view_matrix = shadow_projection_matrix * light.shadow_view_matrix;
 
 				// Set shadow variables for model rendering.
 				light.shadow_matrices[cascade_level] = light_depth_conversion_matrix * shadow_projection_view_matrix;
-				light.shadow_uv_sizes[cascade_level] = light.shadow_light_size / length(vec2{shadow_volume_max} - vec2{shadow_volume_min});
-				light.shadow_near_planes[cascade_level] = shadow_volume_min.z;
+				light.shadow_uv_sizes[cascade_level] = light.shadow_light_size / length(area_max - area_min);
+				light.shadow_near_planes[cascade_level] = light.shadow_near_plane;
 
 				glUniformMatrix4fv(m_shadow_shader.projection_view_matrix.location(), 1, GL_FALSE, glm::value_ptr(shadow_projection_view_matrix));
 				for (const auto& [model, instances] : m_model_instances) {
