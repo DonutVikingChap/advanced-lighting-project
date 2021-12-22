@@ -6,7 +6,6 @@
 #include "../utilities/utf8.hpp"
 #include "framebuffer.hpp"
 #include "mesh.hpp"
-#include "shader.hpp"
 #include "texture.hpp"
 
 #include <cstddef>       // std::byte, std::size_t
@@ -174,7 +173,7 @@ private:
 		state_preserver(const state_preserver&) = delete;
 		state_preserver(state_preserver&&) = delete;
 		auto operator=(const state_preserver&) -> state_preserver& = delete;
-		auto operator=(state_preserver &&) -> state_preserver& = delete;
+		auto operator=(state_preserver&&) -> state_preserver& = delete;
 
 	private:
 		GLint m_framebuffer_binding = 0;
