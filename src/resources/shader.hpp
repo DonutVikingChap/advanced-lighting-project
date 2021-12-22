@@ -11,10 +11,9 @@
 #include <fstream>          // std::ifstream
 #include <initializer_list> // std::initializer_list
 #include <sstream>          // std::ostringstream
-#include <stdexcept>        // std:runtime_error
+#include <stdexcept>        // std::runtime_error
 #include <string>           // std::string
 #include <string_view>      // std::string_view
-#include <unordered_map>    // std::unordered_map
 #include <utility>          // std::move, std::index_sequence, std::make_index_sequence
 #include <vector>           // std::vector
 

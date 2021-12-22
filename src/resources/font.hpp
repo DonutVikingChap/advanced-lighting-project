@@ -85,9 +85,8 @@ public:
 		if (const auto ft_error = FT_Set_Pixel_Sizes(m_face.get(), 0, static_cast<FT_UInt>(size)); ft_error != FT_Err_Ok) {
 			throw font_error{fmt::format("Failed to load font \"{}\" at size {}", filename, size), ft_error};
 		}
-		m_ascii_glyphs.reserve(128);
-		for (auto ch = char32_t{0}; ch < char32_t{128}; ++ch) {
-			m_ascii_glyphs.push_back(render_glyph(ch));
+		for (auto i = std::size_t{0}; i < m_ascii_glyphs.size(); ++i) {
+			m_ascii_glyphs[i] = render_glyph(static_cast<char32_t>(i));
 		}
 	}
 
@@ -314,8 +313,8 @@ private:
 	face_ptr m_face;
 	glyph_atlas m_atlas{};
 	texture m_atlas_texture = texture::create_2d_uninitialized(atlas_texture_internal_format, m_atlas.resolution(), m_atlas.resolution(), atlas_texture_options);
-	std::vector<font_glyph> m_ascii_glyphs{};
 	std::unordered_map<char32_t, font_glyph> m_other_glyphs{};
+	std::array<font_glyph, 128> m_ascii_glyphs{};
 };
 
 #endif
