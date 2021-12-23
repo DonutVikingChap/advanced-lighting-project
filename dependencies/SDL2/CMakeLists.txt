@@ -8,9 +8,11 @@ else()
 	set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 endif()
 
+link_libraries($<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:wayland-client>)
+
 FetchContent_Declare(SDL2
 	GIT_REPOSITORY https://github.com/libsdl-org/SDL
-	GIT_TAG 25f9ed87ff6947d9576fc9d79dee0784e638ac58 # 2.0.16
+	GIT_TAG 2e9821423a237a1206e3c09020778faacfe430be # 2.0.18
 )
 FetchContent_MakeAvailable(SDL2)
 
