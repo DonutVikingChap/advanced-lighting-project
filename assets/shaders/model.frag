@@ -6,7 +6,7 @@
 
 #define CSM_VISUALIZE_CASCADES 0
 #define CSM_BLEND_SIZE 1.0
-#define BASE_REFLECTIVITY 0.04
+#define MIN_REFLECTIVITY 0.04
 #define MAX_REFLECTION_LOD 4.0
 
 const vec3 cascade_color_tints[] = vec3[](
@@ -86,7 +86,7 @@ void main() {
 	float metallic = texture(material_metallic, io_texture_coordinates).r;
 	vec3 lightmap = texture(lightmap_texture, io_lightmap_coordinates).rgb;
 
-	vec3 reflectivity = mix(vec3(BASE_REFLECTIVITY), albedo, metallic);
+	vec3 reflectivity = mix(vec3(MIN_REFLECTIVITY), albedo, metallic);
 
 	vec3 normal = normalize(io_normal);
 	vec3 tangent = normalize(io_tangent);
