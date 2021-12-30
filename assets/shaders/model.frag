@@ -249,6 +249,7 @@ void main() {
 
 #if CSM_VISUALIZE_CASCADES
 	Lo *= cascade_tint_color;
+	ambient *= cascade_tint_color;
 #endif
 
 #if BAKING

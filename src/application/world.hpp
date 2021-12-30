@@ -121,6 +121,7 @@ public:
 			ImGui::Begin("Objects");
 			for (auto i = std::size_t{0}; i < m_scene.objects.size(); ++i) {
 				if (ImGui::TreeNodeEx(fmt::format("Object {}", i).c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+					ImGui::SliderFloat3("Position", glm::value_ptr(m_scene.objects[i].transform[3]), -10.0f, 10.0f);
 					if (ImGui::Button("Remove")) {
 						m_scene.objects.erase(m_scene.objects.begin() + static_cast<std::ptrdiff_t>(i));
 						--i;
