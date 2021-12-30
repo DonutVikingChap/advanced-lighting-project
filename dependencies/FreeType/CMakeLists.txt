@@ -1,10 +1,15 @@
 message(STATUS "Fetching FreeType...")
 
 set(BUILD_SHARED_LIBS OFF)
+set(FT_DISABLE_ZLIB FALSE CACHE BOOL "" FORCE)
+set(FT_DISABLE_BZIP2 FALSE CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_HARFBUZZ TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_BROTLI FALSE CACHE BOOL "" FORCE)
 
 FetchContent_Declare(FreeType
 	GIT_REPOSITORY https://github.com/freetype/freetype
-	GIT_TAG 6a2b3e4007e794bfc6c91030d0ed987f925164a8 # 2.10.4
+	GIT_TAG 3f83daeecb1a78d851b660eed025eeba362c0e4a # 2.11.1
 )
 FetchContent_MakeAvailable(FreeType)
 

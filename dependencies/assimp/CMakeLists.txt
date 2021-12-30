@@ -7,10 +7,11 @@ set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_MINIZIP ON CACHE BOOL "" FORCE)
+add_compile_options($<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:-O2>)
 
 FetchContent_Declare(assimp
 	GIT_REPOSITORY https://github.com/assimp/assimp
-	GIT_TAG 8f0c6b04b2257a520aaab38421b2e090204b69df # 5.0.1
+	GIT_TAG 80b0b897edfc8d97a3071033b95dcd6b799e403b # 5.1.4
 )
 FetchContent_MakeAvailable(assimp)
 

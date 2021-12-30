@@ -8,7 +8,9 @@ else()
 	set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 endif()
 
-link_libraries($<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:wayland-client>)
+if(NOT MINGW)
+	link_libraries($<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:wayland-client>)
+endif()
 
 FetchContent_Declare(SDL2
 	GIT_REPOSITORY https://github.com/libsdl-org/SDL

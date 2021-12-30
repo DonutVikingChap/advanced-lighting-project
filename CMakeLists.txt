@@ -4,6 +4,11 @@ project("TSBK03 Advanced Lighting Project" LANGUAGES C CXX)
 option(BUILD_SHARED_LIBS "Build dependencies as shared libraries" OFF)
 option(USE_CLANG_TIDY "Use clang-tidy for static analysis warnings" OFF)
 
+if(MINGW AND NOT BUILD_SHARED_LIBS)
+	set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+	add_link_options(-static-libgcc -static-libstdc++ -static)
+endif()
+
 add_subdirectory(dependencies)
 
 add_executable(tsbk03 "src/main.cpp")
