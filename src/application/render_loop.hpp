@@ -12,6 +12,7 @@
 #include <span>         // std::span
 #include <stdexcept>    // std::runtime_error
 #include <type_traits>  // std::remove_pointer_t
+#include <vector>       // std::vector
 
 struct render_loop_error : std::runtime_error {
 	explicit render_loop_error(const auto& message)
@@ -111,12 +112,54 @@ public:
 		}
 	}
 
+	auto quit() -> void {
+		m_quit = true;
+	}
+
 	auto set_max_fps(float max_fps) -> void {
 		m_min_frame_interval = (max_fps == 0.0f) ? Uint64{0} : static_cast<Uint64>(std::ceil(static_cast<float>(m_clock_frequency) / max_fps));
 	}
 
+	auto set_record_fps_history(bool record) -> void {
+		m_record_fps_history = record;
+	}
+
+	auto clear_fps_history() -> void {
+		m_fps_history.clear();
+	}
+
+	auto set_fullscreen(bool fullscreen) -> void {
+		const auto flags = SDL_GetWindowFlags(m_window.get());
+		if (fullscreen) {
+			if (SDL_SetWindowFullscreen(m_window.get(), flags | SDL_WINDOW_FULLSCREEN) != 0) {
+				throw render_loop_error{fmt::format("Failed to enable fullscreen: {}", SDL_GetError())};
+			}
+		} else {
+			if (SDL_SetWindowFullscreen(m_window.get(), flags & ~SDL_WINDOW_FULLSCREEN) != 0) {
+				throw render_loop_error{fmt::format("Failed to disable fullscreen: {}", SDL_GetError())};
+			}
+		}
+	}
+
+	auto toggle_fullscreen() -> void {
+		set_fullscreen(!is_fullscreen());
+	}
+
+	[[nodiscard]] auto is_fullscreen() const noexcept -> bool {
+		const auto flags = SDL_GetWindowFlags(m_window.get());
+		return (flags & SDL_WINDOW_FULLSCREEN) != 0 || (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
+	}
+
 	[[nodiscard]] auto latest_measured_fps() const noexcept -> unsigned int {
 		return m_latest_measured_fps;
+	}
+
+	[[nodiscard]] auto is_recording_fps_history() const noexcept -> bool {
+		return m_record_fps_history;
+	}
+
+	[[nodiscard]] auto fps_history() const noexcept -> std::span<const unsigned int> {
+		return m_fps_history;
 	}
 
 	[[nodiscard]] auto get_window() const noexcept -> SDL_Window* {
@@ -165,11 +208,14 @@ private:
 				m_latest_fps_count_time = current_time;
 				m_latest_measured_fps = m_fps_count;
 				m_fps_count = 0;
+				if (m_record_fps_history) {
+					m_fps_history.push_back(m_latest_measured_fps);
+				}
 			}
 
 			for (auto e = SDL_Event{}; SDL_PollEvent(&e) != 0;) {
 				switch (e.type) {
-					case SDL_QUIT: return false;
+					case SDL_QUIT: m_quit = true; return false;
 					case SDL_WINDOWEVENT:
 						if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
 							resize(e.window.data1, e.window.data2);
@@ -194,7 +240,7 @@ private:
 			display();
 			SDL_GL_SwapWindow(m_window.get());
 		}
-		return true;
+		return !m_quit;
 	}
 
 	struct window_deleter final {
@@ -227,6 +273,9 @@ private:
 	unsigned int m_latest_measured_fps = 0u;
 	unsigned int m_tick_count = 0u;
 	unsigned int m_fps_count = 0u;
+	std::vector<unsigned int> m_fps_history{};
+	bool m_record_fps_history = false;
+	bool m_quit = false;
 };
 
 #endif

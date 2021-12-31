@@ -11,11 +11,13 @@
 #include "render_loop.hpp"
 #include "world.hpp"
 
+#include <algorithm>    // std::ranges::min_element, std::ranges::max_element
 #include <cstddef>      // std::size_t
 #include <cstdio>       // stderr
 #include <fmt/format.h> // fmt::format, fmt::print
 #include <imgui.h>      // ImGui
 #include <memory>       // std::shared_ptr
+#include <numeric>      // std::accumulate
 #include <span>         // std::span
 #include <stdexcept>    // std::exception
 #include <string>       // std::u8string
@@ -53,6 +55,8 @@ private:
 			case SDL_KEYDOWN:
 				if (e.key.keysym.scancode == SDL_SCANCODE_Z || e.key.keysym.sym == SDLK_ESCAPE) {
 					toggle_gui();
+				} else if (e.key.keysym.sym == SDLK_F11) {
+					toggle_fullscreen();
 				}
 				break;
 			case SDL_WINDOWEVENT:
@@ -80,8 +84,27 @@ private:
 			ImGui::ShowDemoWindow();
 
 			ImGui::Begin("Application");
+			if (ImGui::Button("Quit")) {
+				quit();
+			}
+			if (ImGui::Button("Toggle fullscreen")) {
+				toggle_fullscreen();
+			}
 			if (ImGui::SliderFloat("FPS Limit", &m_max_fps, 0.0f, 1000.0f)) {
 				set_max_fps(m_max_fps);
+			}
+			auto record_fps = is_recording_fps_history();
+			if (ImGui::Checkbox("Record FPS", &record_fps)) {
+				if (record_fps && !is_recording_fps_history()) {
+					clear_fps_history();
+				}
+				set_record_fps_history(record_fps);
+			}
+			if (const auto& all_fps = fps_history(); !all_fps.empty()) {
+				const auto min_fps = *std::ranges::min_element(all_fps);
+				const auto max_fps = *std::ranges::max_element(all_fps);
+				const auto avg_fps = std::accumulate(all_fps.begin(), all_fps.end(), 0u) / static_cast<unsigned int>(all_fps.size());
+				ImGui::Text("Min: %u\nMax: %u\nAvg: %u", min_fps, max_fps, avg_fps);
 			}
 			if (ImGui::Button("Reload shaders")) {
 				try {
@@ -136,9 +159,9 @@ private:
 	}
 
 	auto draw_fps_counter() -> void {
+		const auto fps = latest_measured_fps();
 		auto fps_color = vec4{0.0f, 1.0f, 0.0f, 1.0f};
 		auto fps_icon = std::u8string_view{u8"✅"};
-		const auto fps = latest_measured_fps();
 		if (fps < 60) {
 			fps_color = {1.0f, 0.0f, 0.0f, 1.0f};
 			fps_icon = u8"❌";

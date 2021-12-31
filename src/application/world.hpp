@@ -33,20 +33,23 @@ public:
 		, m_spot_light_model(asset_manager.load_model("assets/models/spot_light.obj", "assets/textures/"))
 		, m_scene{
 			  .sky = asset_manager.load_environment_cubemap_equirectangular_hdr("assets/textures/studio_country_hall_1k_dark.hdr", 512),
-			  .directional_lights = {},
+			  .directional_lights =
+				  {
+					  std::make_shared<directional_light>(directional_light_options{}),
+				  },
 			  .point_lights =
 				  {
 					  std::make_shared<point_light>(point_light_options{
-						  .position = {-1.8f, 1.8f, 1.75f},
-						  .color = {0.8f, 0.8f, 0.8f},
+						  .position = vec3{-1.8f, 1.8f, 1.75f},
+						  .color = vec3{0.8f, 0.8f, 0.8f},
 					  }),
 				  },
 			  .spot_lights =
 				  {
 					  std::make_shared<spot_light>(spot_light_options{
-						  .position = {-28.0f, 4.3f, -1.0f},
+						  .position = vec3{-28.0f, 4.3f, -1.0f},
 						  .direction = vec3{-0.85f, -0.48f, 0.0f},
-						  .color = {1.0f, 1.0f, 1.0f},
+						  .color = vec3{1.0f, 1.0f, 1.0f},
 						  .inner_cutoff = cos(radians(20.0f)),
 						  .outer_cutoff = cos(radians(45.0f)),
 					  }),
